@@ -1,0 +1,11 @@
+.DS_Store
+.gradle/*
+.idea/*
+native
+project/target/*
+project/project/*
+target/*
+*/target/*
+generated/*
+cockroach-data/*
+
