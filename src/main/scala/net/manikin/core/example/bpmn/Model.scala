@@ -1,14 +1,14 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object Model {
   import java.util.UUID
-  import net.manikan.core.asm.AbstractStateMachine._
-  import net.manikan.core.example.bpmn.Element._
-  import net.manikan.core.example.bpmn.Branch._
-  import net.manikan.core.example.bpmn.Trace._
-  import net.manikan.core.example.bpmn.StartEvent._
-  import net.manikan.core.example.bpmn.EndEvent._
-  import net.manikan.core.example.bpmn.Gateway._
+  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.bpmn.Element._
+  import net.manikin.core.example.bpmn.Branch._
+  import net.manikin.core.example.bpmn.Trace._
+  import net.manikin.core.example.bpmn.StartEvent._
+  import net.manikin.core.example.bpmn.EndEvent._
+  import net.manikin.core.example.bpmn.Gateway._
 
   case class ModelId  (uuid: UUID = UUID.randomUUID()) extends Id[ModelData] {
     def init = ModelData()

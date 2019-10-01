@@ -1,8 +1,8 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object StartEvent {
   import java.util.UUID
-  import net.manikan.core.example.bpmn.Element._
+  import net.manikin.core.example.bpmn.Element._
 
   case class StartEventData()
   

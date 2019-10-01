@@ -1,10 +1,10 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object ParallelGateway {
   import java.util.UUID
-  import net.manikan.core.asm.AbstractStateMachine._
-  import net.manikan.core.example.bpmn.Gateway._
-  
+  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.bpmn.Gateway._
+
   case class ParallelGatewayData()
 
   case class ParallelGatewayId(uuid: UUID = UUID.randomUUID()) extends GatewayId[ParallelGatewayData] {

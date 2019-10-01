@@ -1,7 +1,7 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object Element {
-  import net.manikan.core.asm.AbstractStateMachine._
+  import net.manikin.core.asm.AbstractStateMachine._
 
   case class ElementData[+X](name: String, element: X)
   

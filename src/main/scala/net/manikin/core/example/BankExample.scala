@@ -1,8 +1,8 @@
-package net.manikan.core.example
+package net.manikin.core.example
 
 object BankExample  {
-  import net.manikan.core.asm.AbstractStateMachine._
-  import net.manikan.core.example.IBAN.IBAN
+  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.IBAN.IBAN
 
   def main(args: Array[String]): Unit = {
     implicit val c = new Context()

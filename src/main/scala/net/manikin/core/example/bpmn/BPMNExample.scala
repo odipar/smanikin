@@ -1,13 +1,13 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object BPMNExample {
-  import net.manikan.core.asm.AbstractStateMachine._
-  import net.manikan.core.example.bpmn.Model._
-  import net.manikan.core.example.bpmn.StartEvent._
-  import net.manikan.core.example.bpmn.EndEvent._
-  import net.manikan.core.example.bpmn.Branch.BranchId
-  import net.manikan.core.example.bpmn.OrGateway.OrGatewayId
-  import net.manikan.core.example.bpmn.SimpleTask.SimpleTaskId
+  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.bpmn.Model._
+  import net.manikin.core.example.bpmn.StartEvent._
+  import net.manikin.core.example.bpmn.EndEvent._
+  import net.manikin.core.example.bpmn.Branch.BranchId
+  import net.manikin.core.example.bpmn.OrGateway.OrGatewayId
+  import net.manikin.core.example.bpmn.SimpleTask.SimpleTaskId
 
   def main(args: Array[String]): Unit = {
     implicit val context = new Context()

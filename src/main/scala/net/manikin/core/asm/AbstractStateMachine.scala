@@ -1,4 +1,4 @@
-package net.manikan.core.asm
+package net.manikin.core.asm
 
 object AbstractStateMachine {
   import scala.language.implicitConversions

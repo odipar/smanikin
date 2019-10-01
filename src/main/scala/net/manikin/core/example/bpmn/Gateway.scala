@@ -1,9 +1,9 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object Gateway {
-  import net.manikan.core.asm.AbstractStateMachine._
-  import net.manikan.core.example.bpmn.Element._
-  import net.manikan.core.example.bpmn.Branch._
+  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.bpmn.Element._
+  import net.manikin.core.example.bpmn.Branch._
 
   case class GatewayData[+G](branches: Seq[BranchId] = Seq(), gateway: G)
 

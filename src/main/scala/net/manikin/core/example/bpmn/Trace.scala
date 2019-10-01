@@ -1,10 +1,10 @@
-package net.manikan.core.example.bpmn
+package net.manikin.core.example.bpmn
 
 object Trace {
 
   import java.util.UUID
-  import net.manikan.core.example.bpmn.Element._
-  import net.manikan.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.bpmn.Element._
+  import net.manikin.core.asm.AbstractStateMachine._
 
   case class TraceData(elems: Seq[ElementId[Any]] = Seq())
 
