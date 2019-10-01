@@ -29,7 +29,7 @@ object Account {
 
   trait Trs extends StateTransition[Data] {
     def balance =       data().balance
-    def prev_balance =  data.previous.balance
+    def prev_balance =  data.prev.balance
   }
 
   case class Open(initial: Double) extends Trs {

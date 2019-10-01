@@ -13,7 +13,7 @@ object Transaction {
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Trs {
     def nst =   Map("Initial" -> "Created")
     def pre =   from().state == "Opened" && to().state == "Opened"
-    def ap2 =   data() = data().copy(from = from, to = to, amount = amount)
+    def apl =   data() = data().copy(from = from, to = to, amount = amount)
     def pst =   data().from == from && data().to == to && data().amount == amount
   }
 
@@ -21,10 +21,10 @@ object Transaction {
     def amt =   data().amount
     def from =  data().from
     def to =    data().to
-    
+
     def nst =   Map("Created" -> "Committed")
     def pre =   true
-    def ap2 =   { Withdraw(amt) --> from ; Deposit(amt) --> to }
-    def pst =   from.previous.data.balance + to.previous.data.balance == from().data.balance + to().data.balance
-  }  
+    def apl =   { Withdraw(amt) --> data().from ; Deposit(amt) --> to }
+    def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
+  }
 }

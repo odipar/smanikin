@@ -10,27 +10,27 @@ object Account {
 
   trait Trs extends StateTransition[Data] {
     def balance =       data().balance
-    def prev_balance =  data.previous.balance
+    def prev_balance =  data.prev.balance
   }
 
   case class Open(initial: Double) extends Trs {
     def nst =   Map("Initial" -> "Opened")
     def pre =   initial > 0
-    def ap2 =   data() = data().copy(balance = initial)
+    def apl =   data() = data().copy(balance = initial)
     def pst =   balance == initial
   }
   
   case class Withdraw(amount: Double) extends Trs {
     def nst =   Map("Opened" -> "Opened")
     def pre =   amount > 0.0 && balance > amount
-    def ap2 =   data() = data().copy(balance = balance - amount)
+    def apl =   data() = data().copy(balance = balance - amount)
     def pst =   balance == prev_balance - amount
   }
                                                                                
   case class Deposit(amount: Double) extends Trs {
     def nst =   Map("Opened" -> "Opened")
     def pre =   amount > 0
-    def ap2 =   data() = data().copy(balance = balance + amount)
+    def apl =   data() = data().copy(balance = balance + amount)
     def pst =   balance == prev_balance + amount
   }
 }

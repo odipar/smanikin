@@ -1,6 +1,6 @@
 package net.manikin.core.example
 
-object BankExample  {
+object BankExample {
   import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.IBAN.IBAN
 

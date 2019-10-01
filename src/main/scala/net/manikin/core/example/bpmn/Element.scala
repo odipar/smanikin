@@ -4,13 +4,13 @@ object Element {
   import net.manikin.core.asm.AbstractStateMachine._
 
   case class ElementData[+X](name: String, element: X)
+
+  type TRACE = Seq[Seq[ElementId[Any]]]
   
   trait ElementId[+X] extends Id[ElementData[X]] {
     def init = ElementData(name = null, initElement)
     def initElement: X
 
-    type TRACE = Seq[Seq[ElementId[Any]]]
-    
     def traces(implicit ctx: Context) : TRACE = Seq(Seq(this))
     def insert(before: ElementId[Any], after: ElementId[Any])(implicit ctx: Context): Unit = { }
     def contains(other: ElementId[Any])(implicit ctx: Context) : Boolean = this == other
@@ -25,7 +25,7 @@ object Element {
   implicit class EIdContext[X](id: EId[X]) {
     def apply()(implicit ctx: Context): X = id.self().element
     def update(x: X)(implicit ctx: Context): Unit = id.self() = id.self().copy(element = x)
-    def previous()(implicit ctx: Context): X = id.self.previous.element
+    def previous()(implicit ctx: Context): X = id.self.prev.element
   }
   
   trait ElementTrs[+X] extends Transition[ElementData[X]] {

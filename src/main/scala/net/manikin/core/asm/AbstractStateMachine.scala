@@ -1,6 +1,7 @@
 package net.manikin.core.asm
 
 object AbstractStateMachine {
+
   import scala.language.implicitConversions
 
   trait Failure
@@ -18,14 +19,14 @@ object AbstractStateMachine {
   case class VId[+X](id: Id[X], version: Long) {
     override def toString: String = version + ":" + id
   }
-  
+
   class Context() extends Cloneable {
     private var failure: Failure = null
     private var level = 0
     private var previousContext: Context = _
     private var vStateMap: Map[Id[_], Long] = Map()
     private var stateMap: Map[Id[_], _] = Map()
-    private var reads: Set[VId[_]]= Set()
+    private var reads: Set[VId[_]] = Set()
     private var writes: Set[VId[_]] = Set()
     private var sends: Vector[Send[_]] = Vector()
 
@@ -39,14 +40,14 @@ object AbstractStateMachine {
     def version[X](id: Id[X]): Long = vStateMap.getOrElse(id, 0)
 
     def apply[X](id: Id[X]): X = {
-      if (!vStateMap.contains(id)) { stateMap = stateMap + (id -> id.init) ; vStateMap = vStateMap + (id -> 0) }
+      if (!vStateMap.contains(id)) {stateMap = stateMap + (id -> id.init); vStateMap = vStateMap + (id -> 0)}
 
       reads = reads + VId(id, version(id))
       stateMap(id).asInstanceOf[X]
     }
 
     def failed: Failure = failure
-                        
+
     def set[X](id: Id[X], x: X): Unit = {
       val v = version(id)
 
@@ -76,7 +77,7 @@ object AbstractStateMachine {
 
       try {
         if (transition.pre) {
-          transition.app         
+          transition.app
           previousContext = previous_context
           if (transition.pst) {
             level -= 1
@@ -107,27 +108,27 @@ object AbstractStateMachine {
   trait Id[+X] {
     def init: X
 
-    def previous(implicit ctx: Context): X = ctx.previous(this)
+    def prev(implicit ctx: Context): X = ctx.previous(this)
     def apply()(implicit ctx: Context): X = ctx(this)
   }
 
   case class State[+X](data: X, state: String)
-  
+
   trait StateID[+X] extends Id[State[X]] {
     def init = State(initData, "Initial")
     def initData: X
   }
-  
+
   case class DataID[+X](self: Id[State[X]])
 
   trait StateTransition[+X] extends Transition[State[X]] {
     def nst: PartialFunction[String, String]
     def data = DataID(self)
 
-    def app: Unit = { self() = self().copy(state = nst(self().state)) ; ap2 }
-    def ap2: Unit
+    def app: Unit = { self() = self().copy(state = nst(self().state)); apl }
+    def apl: Unit
   }
-  
+
   trait Transition[+X] {
     var contextVar: Context = _
     var selfVar: Id[_] = _
@@ -149,9 +150,12 @@ object AbstractStateMachine {
     def update(x: X)(implicit ctx: Context): Unit = ctx.set(id, x)
   }
 
-  implicit class StateIdContext[X](id: DataID[X]) {
+  implicit class StateIdContext[+X](id: DataID[X]) {
     def apply()(implicit ctx: Context): X = id.self().data
-    def previous(implicit ctx: Context): X = id.self.previous.data
+    def prev(implicit ctx: Context): X = id.self.prev.data
+  }
+
+  implicit class StateIdContext2[X](id: DataID[X]) {
     def update(x: X)(implicit ctx: Context): Unit = ctx.set(id.self, id.self().copy(data = x))
   }
 }

@@ -12,7 +12,7 @@ object Model {
 
   case class ModelId  (uuid: UUID = UUID.randomUUID()) extends Id[ModelData] {
     def init = ModelData()
-    def traces(implicit ctx: Context) : Seq[Seq[ElementId[_]]] = this().main.traces
+    def traces(implicit ctx: Context) : TRACE = this().main.traces
   }
   
   case class ModelData(main: BranchId = BranchId(), traces: Seq[TraceId] = Seq(TraceId()))
@@ -22,7 +22,7 @@ object Model {
     def traces = self().traces
   }
 
-  def addTraces(t: Seq[Seq[ElementId[_]]])(implicit ctx: Context): Seq[TraceId] = {
+  def addTraces(t: TRACE)(implicit ctx: Context): Seq[TraceId] = {
     val traces = t.map(x => (TraceId(), x)).toMap
     traces.foreach(x => Trace.Init(x._2) --> x._1)
     traces.keys.toSeq

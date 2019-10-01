@@ -24,7 +24,7 @@ object Trace {
     def trace = self().element
     def elems = trace.elems
 
-    def previous_trace = self.previous.element
+    def previous_trace = self.prev.element
     def previous_elems = previous_trace.elems
   }
 
