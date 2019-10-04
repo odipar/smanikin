@@ -16,7 +16,7 @@ object Gateway {
     }
 
     override def contains(other: ElementId[Any])(implicit ctx: Context)  = {
-      (this == other) || this().element.branches.forall(_.contains(other))
+      (this == other) || this().element.branches.exists(_.contains(other))
     }
   }
   

@@ -13,6 +13,7 @@ object BPMNExample {
     implicit val context = new Context()
 
     val start = StartEventId()
+
     val end = EndEventId()
     val model = ModelId()
     val task1 = SimpleTaskId()
@@ -28,7 +29,7 @@ object BPMNExample {
     val branch4 = BranchId()
 
     Init(start, end) --> model
-    SetName(start, "start") --> model
+    /*SetName(start, "start") --> model
     SetName(end, "end") --> model
     SetName(task1, "task1") --> model
     SetName(task2, "task2") --> model
@@ -40,24 +41,32 @@ object BPMNExample {
     SetName(task4, "task4") --> model
     SetName(task5, "task5") --> model
     SetName(branch3, "branch3") --> model
-    SetName(branch4, "branch4") --> model
+    SetName(branch4, "branch4") --> model */
 
-    Insert(start, task1) --> model
-    Insert(task1, or1) --> model
-    Insert(or1, or2) --> model
+
+    Insert(start, or1) --> model
+    //Insert(task1, or1) --> model
+    //Insert(or1, or2) --> model
+
+    //AddBranch(or2, branch3) --> model
+    //AddBranch(or2, branch4) --> model
+
+    //AddToBranch(branch3, task4) --> model
+    //AddToBranch(branch4, task5) --> model
+
     AddBranch(or1, branch1) --> model
     AddBranch(or1, branch2) --> model
-    AddBranch(or2, branch3) --> model
-    AddBranch(or2, branch4) --> model
-    AddToBranch(branch1, task2) --> model
-    AddToBranch(branch2, task3) --> model 
-    AddToBranch(branch3, task4) --> model
-    AddToBranch(branch4, task5) --> model
-                                           
     
-    println("state: " + context.state.map(x => (x._1, x._2)).mkString("\n"))
+    AddToBranch(branch1, task2) --> model
+    AddToBranch(branch2, task3) --> model
 
-    println("traces: " + model.traces.mkString("\n"))
 
+    val t1 = model.traces.toSet
+    val t2 = model().traces.map(x => x().element.elems).toSet
+
+    if (t1 != t2) {
+      println("t1: " + t1)
+      println("t2: " + t2)
+    }
   }
 }

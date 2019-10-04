@@ -5,17 +5,17 @@ object Element {
 
   case class ElementData[+X](name: String, element: X)
 
-  type TRACE = Seq[Seq[ElementId[Any]]]
-  
+  type TRACES = Seq[Seq[ElementId[Any]]]
+
   trait ElementId[+X] extends Id[ElementData[X]] {
     def init = ElementData(name = null, initElement)
     def initElement: X
 
-    def traces(implicit ctx: Context) : TRACE = Seq(Seq(this))
+    def traces(implicit ctx: Context) : TRACES = Seq(Seq(this))
     def insert(before: ElementId[Any], after: ElementId[Any])(implicit ctx: Context): Unit = { }
     def contains(other: ElementId[Any])(implicit ctx: Context) : Boolean = this == other
 
-    def product(i: ElementId[_], s: Seq[TRACE]): TRACE = {
+    def product(i: ElementId[_], s: Seq[TRACES]): TRACES = {
       s.fold(Seq(Seq(i)))((x, y) => x.flatMap(xx => y.map(yy => xx ++ yy))).map(x => x ++ Seq(i))
     }
   }
@@ -28,7 +28,7 @@ object Element {
     def previous()(implicit ctx: Context): X = id.self.prev.element
   }
   
-  trait ElementTrs[+X] extends Transition[ElementData[X]] {
+  trait ElementTrs[+X] extends DefaultTrs[ElementData[X]] {
     def name = self().name
     def element = EId(self)
   }

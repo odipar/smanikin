@@ -11,7 +11,7 @@ object Transaction {
   trait Trs extends StateTransition[Data]
 
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Trs {
-    def nst =   Map("Initial" -> "Created")
+    def nst =   { case "Initial" => "Opened" }
     def pre =   from().state == "Opened" && to().state == "Opened"
     def apl =   data() = data().copy(from = from, to = to, amount = amount)
     def pst =   data().from == from && data().to == to && data().amount == amount
@@ -22,7 +22,7 @@ object Transaction {
     def from =  data().from
     def to =    data().to
 
-    def nst =   Map("Created" -> "Committed")
+    def nst =   { case "Created" => "Committed" }
     def pre =   true
     def apl =   { Withdraw(amt) --> data().from ; Deposit(amt) --> to }
     def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance

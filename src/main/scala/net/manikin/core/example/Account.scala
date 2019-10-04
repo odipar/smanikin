@@ -14,21 +14,21 @@ object Account {
   }
 
   case class Open(initial: Double) extends Trs {
-    def nst =   Map("Initial" -> "Opened")
+    def nst =   { case "Initial" => "Opened" }
     def pre =   initial > 0
     def apl =   data() = data().copy(balance = initial)
     def pst =   balance == initial
   }
   
   case class Withdraw(amount: Double) extends Trs {
-    def nst =   Map("Opened" -> "Opened")
+    def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0.0 && balance > amount
     def apl =   data() = data().copy(balance = balance - amount)
     def pst =   balance == prev_balance - amount
   }
                                                                                
   case class Deposit(amount: Double) extends Trs {
-    def nst =   Map("Opened" -> "Opened")
+    def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0
     def apl =   data() = data().copy(balance = balance + amount)
     def pst =   balance == prev_balance + amount

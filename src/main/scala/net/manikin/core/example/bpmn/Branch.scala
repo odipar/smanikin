@@ -1,9 +1,9 @@
 package net.manikin.core.example.bpmn
 
 object Branch {
-  import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.bpmn.Element._
-
+  import net.manikin.core.asm.AbstractStateMachine._
+  
   import java.util.UUID
 
   case class BranchData(elems: Seq[ElementId[Any]] = Seq())
@@ -11,7 +11,7 @@ object Branch {
   case class BranchId(uuid: UUID = UUID.randomUUID()) extends ElementId[BranchData] {
     def initElement = BranchData()
 
-    override def traces(implicit ctx: Context): TRACE = {
+    override def traces(implicit ctx: Context): TRACES = {
       product(this, this().element.elems.map(x => x.traces))
     }
 

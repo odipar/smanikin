@@ -16,10 +16,6 @@ object AbstractStateMachine {
     override def toString = "ExceptionFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
   }
 
-  case class VId[+X](id: Id[X], version: Long) {
-    override def toString: String = version + ":" + id
-  }
-
   class Context() extends Cloneable {
     private var failure: Failure = null
     private var level = 0
@@ -34,9 +30,10 @@ object AbstractStateMachine {
     def sent: Vector[Send[_]] = sends
     def written: Set[VId[_]] = writes
     def read: Set[VId[_]] = reads
-    def state: Map[Id[_], _] = stateMap
+    def allState: Map[Id[_], _] = stateMap
     def versions: Map[Id[_], Long] = vStateMap
 
+    def withFailure(f: Failure): Unit = failure = f
     def version[X](id: Id[X]): Long = vStateMap.getOrElse(id, 0)
 
     def apply[X](id: Id[X]): X = {
@@ -102,6 +99,12 @@ object AbstractStateMachine {
       }
     }
   }
+  
+  case class NextStateException[+X](id: Id[X], state: X, transition: Transition[X]) extends Failure
+
+  case class VId[+X](id: Id[X], version: Long) {
+    override def toString: String = version + ":" + id
+  }
 
   case class Send[+X](level: Int, vid: VId[X], transition: Transition[X])
 
@@ -122,10 +125,19 @@ object AbstractStateMachine {
   case class DataID[+X](self: Id[State[X]])
 
   trait StateTransition[+X] extends Transition[State[X]] {
-    def nst: PartialFunction[String, String]
     def data = DataID(self)
 
-    def app: Unit = { self() = self().copy(state = nst(self().state)); apl }
+    def nst: PartialFunction[String, String]
+    def app: Unit = {
+      val st = self().state
+
+      if (nst.isDefinedAt(st)) { self() = self().copy(state = nst(self().state)); apl }
+      else {
+        val f = NextStateException(self, self(), this)
+        context.withFailure(f)
+        throw FailureException(f)
+      }
+    }
     def apl: Unit
   }
 
@@ -142,6 +154,8 @@ object AbstractStateMachine {
     def pst: Boolean
   }
 
+  trait DefaultTrs[+X] extends Transition[X]
+  
   implicit class TransitionSyntax[X](t: Transition[X]) {
     def -->(id: Id[X])(implicit ctx: Context): Unit = ctx.send(id, t)
   }
