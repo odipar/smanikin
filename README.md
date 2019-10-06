@@ -24,7 +24,7 @@ object Account {
   import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.IBAN.IBAN
 
-  case class Id  (iban: IBAN) extends StateID[Data] { def initData = Data() }
+  case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)
 
   trait Trs extends StateTransition[Data] {
@@ -33,23 +33,23 @@ object Account {
   }
 
   case class Open(initial: Double) extends Trs {
-    def nst =   Map("Initial" -> "Opened")
+    def nst =   { case "Initial" => "Opened" }
     def pre =   initial > 0
-    def ap2 =   data() = data().copy(balance = initial)
+    def apl =   data() = data().copy(balance = initial)
     def pst =   balance == initial
   }
   
   case class Withdraw(amount: Double) extends Trs {
-    def nst =   Map("Opened" -> "Opened")
+    def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0.0 && balance > amount
-    def ap2 =   data() = data().copy(balance = balance - amount)
+    def apl =   data() = data().copy(balance = balance - amount)
     def pst =   balance == prev_balance - amount
   }
                                                                                
   case class Deposit(amount: Double) extends Trs {
-    def nst =   Map("Opened" -> "Opened")
+    def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0
-    def ap2 =   data() = data().copy(balance = balance + amount)
+    def apl =   data() = data().copy(balance = balance + amount)
     def pst =   balance == prev_balance + amount
   }
 }
@@ -59,15 +59,15 @@ object Transaction {
   import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.Account._
 
-  case class Id  (id: Long) extends StateID[Data] { def initData = Data() }
+  case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
   trait Trs extends StateTransition[Data]
 
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Trs {
-    def nst =   Map("Initial" -> "Created")
+    def nst =   { case "Initial" => "Opened" }
     def pre =   from().state == "Opened" && to().state == "Opened"
-    def ap2 =   data() = data().copy(from = from, to = to, amount = amount)
+    def apl =   data() = data().copy(from = from, to = to, amount = amount)
     def pst =   data().from == from && data().to == to && data().amount == amount
   }
 
@@ -75,11 +75,11 @@ object Transaction {
     def amt =   data().amount
     def from =  data().from
     def to =    data().to
-    
-    def nst =   Map("Created" -> "Committed")
+
+    def nst =   { case "Created" => "Committed" }
     def pre =   true
-    def ap2 =   { Withdraw(amt) --> from ; Deposit(amt) --> to }
-    def pst =   from.previous.data.balance + to.previous.data.balance == from().data.balance + to().data.balance
-  }  
+    def apl =   { Withdraw(amt) --> data().from ; Deposit(amt) --> to }
+    def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
+  }
 }
 ```

@@ -14,26 +14,28 @@ object Gateway {
     override def insert(before: EID, after: EID)(implicit ctx: Context) = {
       if (contains(before)) Insert(before, after) --> this
     }
-
+    
     override def contains(other: EID)(implicit ctx: Context)  = {
       (this == other) || this().element.branches.exists(_.contains(other))
     }
   }
   
   trait GatewayTrs[+G] extends ElementTrs[GatewayData[G]] {
+    type ID <: GatewayId[G]
     def branches = self().element.branches
   }
 
   case class AddBranch(branch: BranchId) extends GatewayTrs[Any] {
-    def pre = true
-    def app = element() = element().copy(branches = branches :+ branch)
-    def pst = branches == element.previous.branches :+ branch
+    def pre =   !self.contains(branch)
+    def app =   element() = element().copy(branches = branches :+ branch)
+    def pst =   self.contains(branch) && branches == element.previous.branches :+ branch
   }
 
+
   case class Insert(before: EID, after: EID) extends GatewayTrs[Any] {
-    def pre = true
-    def app = element().branches.foreach(x => x.insert(before, after))
-    def pst = true
+    def pre =   self.contains(before) && !self.contains(after)
+    def app =   element().branches.foreach(_.insert(before, after))
+    def pst =   self.contains(before) && self.contains(after)
   }
 }
 

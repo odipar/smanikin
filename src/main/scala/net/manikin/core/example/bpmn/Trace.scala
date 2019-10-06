@@ -18,11 +18,11 @@ object Trace {
       (this == other) || this().element.elems.contains(other)
     }
     
-    def patchAfter(g: EID, t: Seq[EID], i: (Seq[EID], EID) => Int)(implicit ctx: Context): Unit = {
+    def patch(g: EID, t: Seq[EID], i: (Seq[EID], EID) => Int)(implicit ctx: Context): Unit = {
       InsertAt(i(this().element.elems, g), t) --> this
     }
 
-    def cloneAfter(g: EID, t: Seq[EID], i: (Seq[EID], EID) => Int)(implicit ctx: Context): Seq[ElementId[_]] = {
+    def clone(g: EID, t: Seq[EID], i: (Seq[EID], EID) => Int)(implicit ctx: Context): Seq[ElementId[_]] = {
       insertAt(this().element.elems, i(this().element.elems, g), t)
     }
 
@@ -40,30 +40,30 @@ object Trace {
   }
 
   def insertAt(elems: Seq[EID], index: Int, elm: Seq[EID]): Seq[EID] = {
-    val spl = elems.splitAt(index + 1) ; (spl._1 ++ elm) ++ spl._2
+    val spl =   elems.splitAt(index + 1) ; (spl._1 ++ elm) ++ spl._2
   }
 
   case class Init(new_elems: Seq[EID]) extends TraceTrs {
-    def pre = elems != null
-    def app = element() = element().copy(elems = new_elems)
-    def pst = elems == new_elems
+    def pre =   elems != null && elems.isEmpty
+    def app =   element() = element().copy(elems = new_elems)
+    def pst =   elems == new_elems
   }
 
   case class Add(elem: EID) extends TraceTrs {
-    def pre = elems != null
-    def app = element() = element().copy(elems = element().elems :+ elem)
-    def pst = elems == previous_elems :+ elem
+    def pre =   !self.contains(elem) && elems != null
+    def app =   element() = element().copy(elems = element().elems :+ elem)
+    def pst =   self.contains(elem) && elems == previous_elems :+ elem
   }
 
   case class Insert(before: EID, after: EID) extends TraceTrs {
-    def pre = elems != null
-    def app = { InsertAt(elems.lastIndexOf(before), Seq(after)) --> self }     // assumes no duplicate tasks
-    def pst = elems.contains(after)
+    def pre =   self.contains(before) && !self.contains(after) && elems != null
+    def app =   { InsertAt(elems.lastIndexOf(before), Seq(after)) --> self }     // assumes no duplicate tasks
+    def pst =   self.contains(before) && self.contains(after) && elems.contains(after)
   }
   
   case class InsertAt(index: Int, elm: Seq[EID]) extends TraceTrs {
-    def pre = elems != null
-    def app = element() = element().copy(elems = insertAt(elems, index, elm))
-    def pst = elems == insertAt(previous_elems, index, elm)
+    def pre =   !elm.exists(self.contains(_)) && elems != null
+    def app =   element() = element().copy(elems = insertAt(elems, index, elm))
+    def pst =   elm.forall(self.contains(_)) && elems == insertAt(previous_elems, index, elm)
   }
 }

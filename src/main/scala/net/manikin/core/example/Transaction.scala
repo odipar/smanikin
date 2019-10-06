@@ -5,7 +5,7 @@ object Transaction {
   import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.Account._
 
-  case class Id  (id: Long) extends StateID[Data] { def initData = Data() }
+  case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
   trait Trs extends StateTransition[Data]

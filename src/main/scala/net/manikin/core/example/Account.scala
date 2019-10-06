@@ -5,7 +5,7 @@ object Account {
   import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.IBAN.IBAN
 
-  case class Id  (iban: IBAN) extends StateID[Data] { def initData = Data() }
+  case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)
 
   trait Trs extends StateTransition[Data] {

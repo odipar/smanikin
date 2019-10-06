@@ -23,7 +23,7 @@ object Element {
     def prettyString(level: Int)(implicit ctx: Context): String = ("  " * level) + this().name
   }
 
-  case class EId[+X](self: Id[ElementData[X]])
+  case class EId[+X](self: ElementId[X])
 
   implicit class EIdContext[X](id: EId[X]) {
     def apply()(implicit ctx: Context): X = id.self().element
@@ -31,14 +31,15 @@ object Element {
     def previous()(implicit ctx: Context): X = id.self.prev.element
   }
   
-  trait ElementTrs[+X] extends DefaultTrs[ElementData[X]] {
+  trait ElementTrs[+X] extends Transition[ElementData[X]] {
+    type ID <: ElementId[X]
     def name = self().name
     def element = EId(self)
   }
   
   case class SetName(new_name: String) extends ElementTrs[Any] {
-    def pre = true
-    def app = self() = self().copy(name = new_name)
-    def pst = name == new_name
+    def pre =   true
+    def app =   self() = self().copy(name = new_name)
+    def pst =   name == new_name
   }
 }

@@ -24,9 +24,11 @@ object Branch {
     }
 
     override def prettyString(level: Int)(implicit ctx: Context): String = {
-      ("  " * level) + this().name + "{\n" +
+      ("  " * level) + this().name +
+      "{\n" +
       this().element.elems.map(x => x.prettyString(level + 1)).mkString("\n") +
-      "\n" + ("  " * level) + "}"
+      "\n" +
+      ("  " * level) + "}"
     }
   }
 
@@ -44,17 +46,17 @@ object Branch {
   }
 
   case class Add(elem: EID) extends BranchTrs {
-    def pre = elems != null
-    def app = element() = element().copy(elems = elem +: elems)
-    def pst = elems == elem +: previous_elems
+    def pre =   elems != null && !self.contains(elem)
+    def app =   element() = element().copy(elems = elems :+ elem)
+    def pst =   self.contains(elem) && elems == previous_elems :+ elem
   }
 
   case class Insert(before: EID, after: EID) extends BranchTrs {
-    def pre = elems != null
-    def app =  {
-      element() = element().copy(elems = insert(elems, before, after))
-      elems.foreach(x => x.insert(before,after))
-    }
-    def pst = elems == insert(previous_elems, before, after)
+    def pre =   self.contains(before) && !self.contains(after)
+    def app =   {
+                  element() = element().copy(elems = insert(elems, before, after))
+                  elems.foreach(_.insert(before, after))
+                }
+    def pst =   self.contains(before) && self.contains(after) && elems == insert(previous_elems, before, after)
   }
 }

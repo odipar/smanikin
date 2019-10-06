@@ -117,14 +117,16 @@ object AbstractStateMachine {
 
   case class State[+X](data: X, state: String)
 
-  trait StateID[+X] extends Id[State[X]] {
+  trait StateId[+X] extends Id[State[X]] {
     def init = State(initData, "Initial")
     def initData: X
   }
 
-  case class DataID[+X](self: Id[State[X]])
+  case class DataID[+X](self: StateId[X])
 
   trait StateTransition[+X] extends Transition[State[X]] {
+    type ID <: StateId[X]
+    
     def data = DataID(self)
 
     def nst: PartialFunction[String, String]
@@ -142,20 +144,20 @@ object AbstractStateMachine {
   }
 
   trait Transition[+X] {
+    type ID <: Id[X]
+
     var contextVar: Context = _
     var selfVar: Id[_] = _
 
     implicit def context: Context = contextVar
 
-    def self: Id[X] = selfVar.asInstanceOf[Id[X]]
+    def self: ID = selfVar.asInstanceOf[ID]
 
     def pre: Boolean
     def app: Unit
     def pst: Boolean
   }
 
-  trait DefaultTrs[+X] extends Transition[X]
-  
   implicit class TransitionSyntax[X](t: Transition[X]) {
     def -->(id: Id[X])(implicit ctx: Context): Unit = ctx.send(id, t)
   }
