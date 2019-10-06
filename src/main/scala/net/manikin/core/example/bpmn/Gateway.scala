@@ -11,11 +11,11 @@ object Gateway {
     def initElement = GatewayData(Seq(), initGateway)
     def initGateway: G
 
-    override def insert(before: ElementId[Any], after: ElementId[Any])(implicit ctx: Context) = {
+    override def insert(before: EID, after: EID)(implicit ctx: Context) = {
       if (contains(before)) Insert(before, after) --> this
     }
 
-    override def contains(other: ElementId[Any])(implicit ctx: Context)  = {
+    override def contains(other: EID)(implicit ctx: Context)  = {
       (this == other) || this().element.branches.exists(_.contains(other))
     }
   }
@@ -30,7 +30,7 @@ object Gateway {
     def pst = branches == element.previous.branches :+ branch
   }
 
-  case class Insert(before: ElementId[Any], after: ElementId[Any]) extends GatewayTrs[Any] {
+  case class Insert(before: EID, after: EID) extends GatewayTrs[Any] {
     def pre = true
     def app = element().branches.foreach(x => x.insert(before, after))
     def pst = true

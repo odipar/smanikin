@@ -43,23 +43,20 @@ object BPMNExample {
     SetName(branch3, "branch3") --> model
     SetName(branch4, "branch4") --> model */
 
+    Insert(start, task1) --> model
+    Insert(task1, or1) --> model
+    Insert(or1, or2) --> model
 
-    Insert(start, or1) --> model
-    //Insert(task1, or1) --> model
-    //Insert(or1, or2) --> model
-
-    //AddBranch(or2, branch3) --> model
-    //AddBranch(or2, branch4) --> model
-
-    //AddToBranch(branch3, task4) --> model
-    //AddToBranch(branch4, task5) --> model
+    AddBranch(or2, branch3) --> model
+    AddBranch(or2, branch4) --> model
+    AddToBranch(branch1, task2) --> model
+    AddToBranch(branch2, task3) --> model
+    
+    AddToBranch(branch3, task4) --> model
+    AddToBranch(branch4, task5) --> model
 
     AddBranch(or1, branch1) --> model
     AddBranch(or1, branch2) --> model
-    
-    AddToBranch(branch1, task2) --> model
-    AddToBranch(branch2, task3) --> model
-
 
     val t1 = model.traces.toSet
     val t2 = model().traces.map(x => x().element.elems).toSet

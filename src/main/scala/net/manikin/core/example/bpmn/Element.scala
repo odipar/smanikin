@@ -5,17 +5,18 @@ object Element {
 
   case class ElementData[+X](name: String, element: X)
 
-  type TRACES = Seq[Seq[ElementId[Any]]]
+  type EID = ElementId[Any]
+  type TRACES = Seq[Seq[EID]]
 
   trait ElementId[+X] extends Id[ElementData[X]] {
     def init = ElementData(name = null, initElement)
     def initElement: X
 
     def traces(implicit ctx: Context) : TRACES = Seq(Seq(this))
-    def insert(before: ElementId[Any], after: ElementId[Any])(implicit ctx: Context): Unit = { }
-    def contains(other: ElementId[Any])(implicit ctx: Context) : Boolean = this == other
+    def insert(before: EID, after: EID)(implicit ctx: Context): Unit = { }
+    def contains(other: EID)(implicit ctx: Context) : Boolean = this == other
 
-    def product(i: ElementId[_], s: Seq[TRACES]): TRACES = {
+    def product(i: ElementId[Any], s: Seq[TRACES]): TRACES = {
       s.fold(Seq(Seq(i)))((x, y) => x.flatMap(xx => y.map(yy => xx ++ yy))).map(x => x ++ Seq(i))
     }
   }

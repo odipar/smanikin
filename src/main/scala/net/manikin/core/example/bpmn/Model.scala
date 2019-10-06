@@ -45,24 +45,16 @@ object Model {
     def pst = true
   }
   
-  case class Insert(before: ElementId[Any], after: ElementId[Any]) extends ModelTrs {
+  case class Insert(before: EID, after: EID) extends ModelTrs {
     def pre = true
     def app = {
       main.insert(before, after)
-
-      val sub_traces = after.traces
-      val target_traces = self().traces.filter(_.contains(before))
-
-      target_traces.foreach { t =>
-        val new_traces = sub_traces.tail.map(st => t.cloneElement(before, st))
-        addTraces(self, new_traces)
-        t.patchElement(before, sub_traces.head)
-      }
+      cloneAndPatch(self, before, after, lastIndex)
     }
     def pst = true
   }
 
-  case class SetName(elem: ElementId[Any], name: String) extends ModelTrs {
+  case class SetName(elem: EID, name: String) extends ModelTrs {
     def pre = true
     def app = Element.SetName(name) --> elem
     def pst = true
@@ -75,43 +67,40 @@ object Model {
 
         Gateway.AddBranch(branch) --> gateway
 
-        val tt = self().main.traces.filter(_.contains(gateway))
+        val tt = self().main.traces.filter(_.contains(branch))
         addTraces(self, tt)
       }
       else {
         Gateway.AddBranch(branch) --> gateway
-
-        val sub_traces = branch.traces
-        val target_traces = self().traces.filter(_.contains(gateway))
-
-        target_traces.foreach { t =>
-          val new_traces = sub_traces.tail.map(st => t.cloneGateway(gateway, st))
-          addTraces(self, new_traces)
-
-          t.patchGateway(gateway, sub_traces.head)
-        }
+        cloneAndPatch(self, gateway, branch, firstIndex)
       }
     }
 
     def pst = true
   }
 
-  case class AddToBranch(branch: BranchId, elem: ElementId[Any]) extends ModelTrs {
+  case class AddToBranch(branch: BranchId, elem: EID) extends ModelTrs {
     def pre = true
     def app = {
       Branch.Add(elem) --> branch
-
-      val sub_traces = elem.traces
-      val target_traces = self().traces.filter(_.contains(branch))
-      
-      target_traces.foreach { t =>
-        val new_traces = sub_traces.tail.map(st => t.cloneBranch(branch, st))
-        addTraces(self, new_traces)
-        
-        t.patchBranch(branch, sub_traces.head)
-      }
+      cloneAndPatch(self, branch, elem, firstIndex)
     }
     def pst = true
+  }
+
+  def firstIndex(elems: Seq[EID], e: EID): Int = elems.indexOf(e)
+  def lastIndex(elems: Seq[EID], e: EID): Int = elems.lastIndexOf(e)
+
+  def cloneAndPatch(self: Id[ModelData], target: EID, new_element: EID, i: (Seq[EID], EID) => Int)(implicit ctx: Context) = {
+    val sub_traces = new_element.traces
+    val target_traces = self().traces.filter(_.contains(target))
+
+    target_traces.foreach { t =>
+      val new_traces = sub_traces.tail.map(st => t.cloneAfter(target, st, i))
+      addTraces(self, new_traces)
+
+      t.patchAfter(target, sub_traces.head, i)
+    }
   }
 }
 

@@ -6,7 +6,7 @@ object Branch {
   
   import java.util.UUID
 
-  case class BranchData(elems: Seq[ElementId[Any]] = Seq())
+  case class BranchData(elems: Seq[EID] = Seq())
 
   case class BranchId(uuid: UUID = UUID.randomUUID()) extends ElementId[BranchData] {
     def initElement = BranchData()
@@ -15,11 +15,11 @@ object Branch {
       product(this, this().element.elems.map(x => x.traces))
     }
 
-    override def insert(before: ElementId[Any], after: ElementId[Any])(implicit ctx: Context) = {
+    override def insert(before: EID, after: EID)(implicit ctx: Context) = {
       if (contains(before)) Insert(before, after) --> this
     }
     
-    override def contains(other: ElementId[Any])(implicit ctx: Context)  = {
+    override def contains(other: EID)(implicit ctx: Context)  = {
       (this == other) || this().element.elems.exists(_.contains(other))
     }
   }
@@ -32,18 +32,18 @@ object Branch {
     def previous_elems = previous_branch.elems
   }
 
-  def insert(elems: Seq[ElementId[Any]], before: ElementId[Any], after: ElementId[Any]): Seq[ElementId[Any]] = {
+  def insert(elems: Seq[EID], before: EID, after: EID): Seq[EID] = {
     if (elems.contains(before)) elems.flatMap(x => if (x == before) Seq(x, after) ; else Seq(x))
     else elems
   }
 
-  case class Add(elem: ElementId[Any]) extends BranchTrs {
+  case class Add(elem: EID) extends BranchTrs {
     def pre = elems != null
-    def app = element() = element().copy(elems = elems :+ elem)
-    def pst = elems == previous_elems :+ elem
+    def app = element() = element().copy(elems = elem +: elems)
+    def pst = elems == elem +: previous_elems
   }
 
-  case class Insert(before: ElementId[Any], after: ElementId[Any]) extends BranchTrs {
+  case class Insert(before: EID, after: EID) extends BranchTrs {
     def pre = elems != null
     def app =  {
       element() = element().copy(elems = insert(elems, before, after))
