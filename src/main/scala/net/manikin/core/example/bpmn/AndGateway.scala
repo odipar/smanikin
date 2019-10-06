@@ -1,15 +1,15 @@
 package net.manikin.core.example.bpmn
 
-object ParallelGateway {
+object AndGateway {
   import net.manikin.core.asm.AbstractStateMachine._
   import java.util.UUID
   import net.manikin.core.example.bpmn.Gateway._
   import net.manikin.core.example.bpmn.Element._
 
-  case class ParallelGatewayData()
+  case class AndGatewayData()
 
-  case class ParallelGatewayId(uuid: UUID = UUID.randomUUID()) extends GatewayId[ParallelGatewayData] {
-    def initGateway = ParallelGatewayData()
+  case class AndGatewayId(uuid: UUID = UUID.randomUUID()) extends GatewayId[AndGatewayData] {
+    def initGateway = AndGatewayData()
 
     override def traces(implicit ctx: Context): TRACES = {
       product(this, this().element.branches.map(_.traces))

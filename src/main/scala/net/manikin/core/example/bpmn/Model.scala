@@ -1,7 +1,7 @@
 package net.manikin.core.example.bpmn
 
 import net.manikin.core.example.bpmn.OrGateway.OrGatewayId
-import net.manikin.core.example.bpmn.ParallelGateway.ParallelGatewayId
+import net.manikin.core.example.bpmn.AndGateway.AndGatewayId
 
 object Model {
   import net.manikin.core.asm.AbstractStateMachine._
@@ -58,7 +58,7 @@ object Model {
 
   case class SetName(elem: EID, name: String) extends ModelTrs {
     def pre =   self.contains(elem)
-    def app =   Element.SetName(name) --> elem
+    def app =   { Element.SetName(name) --> elem ; self().itraces.foreach(_.setName(elem, name)) }
     def pst =   true
   }
 
@@ -77,7 +77,7 @@ object Model {
     def pst =   self.contains(gateway) && self.contains(branch)
   }
   
-  case class AddParallelBranch(gateway: ParallelGatewayId, branch: BranchId) extends ModelTrs {
+  case class AddAndBranch(gateway: AndGatewayId, branch: BranchId) extends ModelTrs {
     def pre =   self.contains(gateway) && !self.contains(branch)
     def app =   {
                   if (gateway().element.branches.nonEmpty) {

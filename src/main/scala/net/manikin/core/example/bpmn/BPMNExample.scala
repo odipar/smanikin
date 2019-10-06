@@ -1,6 +1,7 @@
 package net.manikin.core.example.bpmn
 
-import net.manikin.core.example.bpmn.ParallelGateway.ParallelGatewayId
+import net.manikin.core.example.bpmn.AndGateway.AndGatewayId
+import net.manikin.core.example.bpmn.Trace.TraceTrs
 
 object BPMNExample {
   import net.manikin.core.asm.AbstractStateMachine._
@@ -15,7 +16,6 @@ object BPMNExample {
     implicit val context = new Context()
 
     val start = StartEventId()
-
     val end = EndEventId()
     val model = ModelId()
     val task1 = SimpleTaskId()
@@ -27,7 +27,7 @@ object BPMNExample {
     val or1 = OrGatewayId()
     val branch1 = BranchId()
     val branch2 = BranchId()
-    val and2 = ParallelGatewayId()
+    val and2 = AndGatewayId()
     val branch3 = BranchId()
     val branch4 = BranchId()
     val branch5 = BranchId()
@@ -42,8 +42,8 @@ object BPMNExample {
     AddToBranch(branch2, task3) --> model
     AddToBranch(branch5, task6) --> model
     Insert(task2, and2) --> model
-    AddParallelBranch(and2, branch3) --> model
-    AddParallelBranch(and2, branch4) --> model
+    AddAndBranch(and2, branch3) --> model
+    AddAndBranch(and2, branch4) --> model
     AddToBranch(branch3, task4) --> model
     AddToBranch(branch4, task5) --> model
 
@@ -74,5 +74,11 @@ object BPMNExample {
       println("t1: " + t1)
       println("t2: " + t2)
     }
+
+    println
+    
+    context.sent.
+      filter(_.transition.isInstanceOf[TraceTrs]).
+      foreach(println(_))
   }
 }

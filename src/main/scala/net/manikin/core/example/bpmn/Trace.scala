@@ -14,8 +14,12 @@ object Trace {
       if (contains(before)) Insert(before, after) --> this
     }
 
-    override def contains(other: EID)(implicit ctx: Context)  = {
+    override def contains(other: EID)(implicit ctx: Context) = {
       (this == other) || this().element.elems.contains(other)
+    }
+
+    def setName(elem: EID, name: String)(implicit ctx: Context)  = {
+      if (contains(elem)) SetName(elem, name) --> this
     }
     
     def patch(g: EID, t: Seq[EID], i: (Seq[EID], EID) => Int)(implicit ctx: Context): Unit = {
@@ -65,5 +69,11 @@ object Trace {
     def pre =   !elm.exists(self.contains(_)) && elems != null
     def app =   element() = element().copy(elems = insertAt(elems, index, elm))
     def pst =   elm.forall(self.contains(_)) && elems == insertAt(previous_elems, index, elm)
+  }
+
+  case class SetName(elm: EID, new_name: String) extends TraceTrs {
+    def pre =   elems.contains(elm)
+    def app =   { }
+    def pst =   true
   }
 }
