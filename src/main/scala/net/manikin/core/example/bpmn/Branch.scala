@@ -22,6 +22,12 @@ object Branch {
     override def contains(other: EID)(implicit ctx: Context)  = {
       (this == other) || this().element.elems.exists(_.contains(other))
     }
+
+    override def prettyString(level: Int)(implicit ctx: Context): String = {
+      ("  " * level) + this().name + "{\n" +
+      this().element.elems.map(x => x.prettyString(level + 1)).mkString("\n") +
+      "\n" + ("  " * level) + "}"
+    }
   }
 
   trait BranchTrs extends ElementTrs[BranchData] {

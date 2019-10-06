@@ -12,7 +12,13 @@ object Model {
 
   case class ModelId  (uuid: UUID = UUID.randomUUID()) extends Id[ModelData] {
     def init = ModelData()
-    def traces(implicit ctx: Context) : TRACES = this().main.traces
+    def traces(implicit ctx: Context): TRACES = this ().main.traces
+
+    def prettyStringModel(level: Int)(implicit ctx: Context): String = this().main.prettyString(level)
+    def prettyStringTraces(level: Int)(implicit ctx: Context): String = {
+      val tr = this().traces
+      tr.indices.map(i => { val x = tr(i) ; (i + 1).toString + ": " + x.prettyString(level + 1)}).mkString("\n")
+    }
   }
   
   case class ModelData(main: BranchId = BranchId(), traces: Seq[TraceId] = Seq())
@@ -22,19 +28,19 @@ object Model {
     def traces = self().traces
   }
 
-  def addTraces(s: Id[ModelData], t: TRACES)(implicit ctx: Context): Unit = {
+  def addTraces(self: Id[ModelData], t: TRACES)(implicit ctx: Context): Unit = {
     val traces = t.map(x => (TraceId(), x)).toMap
     traces.foreach(x => Trace.Init(x._2) --> x._1)
-    s() = s().copy(traces = s().traces ++ traces.keys.toSeq)
+    self() = self().copy(traces = self().traces ++ traces.keys.toSeq)
   }
   
   case class Init(startEvent: StartEventId, endEvent: EndEventId) extends ModelTrs {
     def pre = true
     def app = {
       Element.SetName("main_branch") --> main
-      Branch.Add(startEvent) --> main
-      Branch.Add(endEvent) --> main
       addTraces(self, main.traces)
+      AddToBranch(main, endEvent) --> self
+      AddToBranch(main, startEvent) --> self
     }
     def pst = true
   }
@@ -64,9 +70,7 @@ object Model {
     def pre = true
     def app = {
       if (gateway().element.branches.nonEmpty) {
-
         Gateway.AddBranch(branch) --> gateway
-
         val tt = self().main.traces.filter(_.contains(branch))
         addTraces(self, tt)
       }
@@ -91,14 +95,10 @@ object Model {
   def firstIndex(elems: Seq[EID], e: EID): Int = elems.indexOf(e)
   def lastIndex(elems: Seq[EID], e: EID): Int = elems.lastIndexOf(e)
 
-  def cloneAndPatch(self: Id[ModelData], target: EID, new_element: EID, i: (Seq[EID], EID) => Int)(implicit ctx: Context) = {
-    val sub_traces = new_element.traces
-    val target_traces = self().traces.filter(_.contains(target))
-
-    target_traces.foreach { t =>
-      val new_traces = sub_traces.tail.map(st => t.cloneAfter(target, st, i))
-      addTraces(self, new_traces)
-
+  def cloneAndPatch(self: Id[ModelData], target: EID, elem: EID, i: (Seq[EID], EID) => Int)(implicit ctx: Context) = {
+    val sub_traces = elem.traces
+    self().traces.filter(_.contains(target)).foreach { t =>
+      addTraces(self, sub_traces.tail.map(st => t.cloneAfter(target, st, i)))
       t.patchAfter(target, sub_traces.head, i)
     }
   }

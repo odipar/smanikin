@@ -21,15 +21,17 @@ object BPMNExample {
     val task3 = SimpleTaskId()
     val task4 = SimpleTaskId()
     val task5 = SimpleTaskId()
+    val task6 = SimpleTaskId()
     val or1 = OrGatewayId()
     val branch1 = BranchId()
     val branch2 = BranchId()
     val or2 = OrGatewayId()
     val branch3 = BranchId()
     val branch4 = BranchId()
+    val branch5 = BranchId()
 
     Init(start, end) --> model
-    /*SetName(start, "start") --> model
+    SetName(start, "start") --> model
     SetName(end, "end") --> model
     SetName(task1, "task1") --> model
     SetName(task2, "task2") --> model
@@ -40,8 +42,10 @@ object BPMNExample {
     SetName(or2, "or2") --> model
     SetName(task4, "task4") --> model
     SetName(task5, "task5") --> model
+    SetName(task6, "task6") --> model
     SetName(branch3, "branch3") --> model
-    SetName(branch4, "branch4") --> model */
+    SetName(branch4, "branch4") --> model
+    SetName(branch5, "branch5") --> model
 
     Insert(start, task1) --> model
     Insert(task1, or1) --> model
@@ -49,17 +53,24 @@ object BPMNExample {
 
     AddBranch(or2, branch3) --> model
     AddBranch(or2, branch4) --> model
+    AddBranch(or1, branch5) --> model
+
     AddToBranch(branch1, task2) --> model
     AddToBranch(branch2, task3) --> model
-    
+    AddToBranch(branch3, task4) --> model
+
     AddToBranch(branch3, task4) --> model
     AddToBranch(branch4, task5) --> model
+    AddToBranch(branch5, task6) --> model
 
     AddBranch(or1, branch1) --> model
     AddBranch(or1, branch2) --> model
 
     val t1 = model.traces.toSet
     val t2 = model().traces.map(x => x().element.elems).toSet
+
+    println(model.prettyStringModel(0))
+    println(model.prettyStringTraces(0))
 
     if (t1 != t2) {
       println("t1: " + t1)

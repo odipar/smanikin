@@ -1,9 +1,5 @@
 package net.manikin.core.example.bpmn
 
-import net.manikin.core.example.bpmn.Branch.BranchId
-import net.manikin.core.example.bpmn.Gateway.GatewayId
-import net.manikin.core.example.bpmn.Model.ModelData
-
 object Trace {
   import net.manikin.core.asm.AbstractStateMachine._
   import java.util.UUID
@@ -28,6 +24,10 @@ object Trace {
 
     def cloneAfter(g: EID, t: Seq[EID], i: (Seq[EID], EID) => Int)(implicit ctx: Context): Seq[ElementId[_]] = {
       insertAt(this().element.elems, i(this().element.elems, g), t)
+    }
+
+    override def prettyString(level: Int)(implicit ctx: Context): String = {
+      this().element.elems.map(x => x().name).mkString(" ")
     }
   }
 

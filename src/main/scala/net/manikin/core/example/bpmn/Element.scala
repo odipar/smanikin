@@ -19,6 +19,8 @@ object Element {
     def product(i: ElementId[Any], s: Seq[TRACES]): TRACES = {
       s.fold(Seq(Seq(i)))((x, y) => x.flatMap(xx => y.map(yy => xx ++ yy))).map(x => x ++ Seq(i))
     }
+    
+    def prettyString(level: Int)(implicit ctx: Context): String = ("  " * level) + this().name
   }
 
   case class EId[+X](self: Id[ElementData[X]])
