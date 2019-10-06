@@ -33,6 +33,7 @@ object Element {
   
   trait ElementTrs[+X] extends Transition[ElementData[X]] {
     type ID <: ElementId[X]
+
     def name = self().name
     def element = EId(self)
   }

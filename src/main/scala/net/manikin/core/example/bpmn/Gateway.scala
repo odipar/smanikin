@@ -22,6 +22,7 @@ object Gateway {
   
   trait GatewayTrs[+G] extends ElementTrs[GatewayData[G]] {
     type ID <: GatewayId[G]
+
     def branches = self().element.branches
   }
 

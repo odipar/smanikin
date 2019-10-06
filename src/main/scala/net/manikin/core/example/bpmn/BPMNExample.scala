@@ -1,5 +1,7 @@
 package net.manikin.core.example.bpmn
 
+import net.manikin.core.example.bpmn.ParallelGateway.ParallelGatewayId
+
 object BPMNExample {
   import net.manikin.core.asm.AbstractStateMachine._
   import net.manikin.core.example.bpmn.Model._
@@ -25,12 +27,26 @@ object BPMNExample {
     val or1 = OrGatewayId()
     val branch1 = BranchId()
     val branch2 = BranchId()
-    val or2 = OrGatewayId()
+    val and2 = ParallelGatewayId()
     val branch3 = BranchId()
     val branch4 = BranchId()
     val branch5 = BranchId()
 
     Init(start, end) --> model
+    Insert(start, task1) --> model
+    Insert(task1, or1) --> model
+    AddOrBranch(or1, branch5) --> model
+    AddOrBranch(or1, branch1) --> model
+    AddOrBranch(or1, branch2) --> model
+    AddToBranch(branch1, task2) --> model
+    AddToBranch(branch2, task3) --> model
+    AddToBranch(branch5, task6) --> model
+    Insert(task2, and2) --> model
+    AddParallelBranch(and2, branch3) --> model
+    AddParallelBranch(and2, branch4) --> model
+    AddToBranch(branch3, task4) --> model
+    AddToBranch(branch4, task5) --> model
+
     SetName(start, "start") --> model
     SetName(end, "end") --> model
     SetName(task1, "task1") --> model
@@ -39,7 +55,7 @@ object BPMNExample {
     SetName(or1, "or1") --> model
     SetName(branch1, "branch1") --> model
     SetName(branch2, "branch2") --> model
-    SetName(or2, "or2") --> model
+    SetName(and2, "and2") --> model
     SetName(task4, "task4") --> model
     SetName(task5, "task5") --> model
     SetName(task6, "task6") --> model
@@ -47,29 +63,12 @@ object BPMNExample {
     SetName(branch4, "branch4") --> model
     SetName(branch5, "branch5") --> model
 
-    Insert(start, task1) --> model
-    Insert(task1, or1) --> model
-
-    AddBranch(or1, branch5) --> model
-    AddBranch(or1, branch1) --> model
-    AddBranch(or1, branch2) --> model
-
-    AddToBranch(branch1, task2) --> model
-    AddToBranch(branch2, task3) --> model
-    AddToBranch(branch5, task6) --> model
-
-    Insert(task2, or2) --> model
-    AddBranch(or2, branch3) --> model
-    AddBranch(or2, branch4) --> model
-    
-    AddToBranch(branch3, task4) --> model
-    AddToBranch(branch4, task5) --> model
-    
-    val t1 = model.traces.toSet
-    val t2 = model().traces.map(x => x().element.elems).toSet
-
     println(model.prettyStringModel(0))
     println(model.prettyStringTraces(0))
+
+    // check conformance
+    val t1 = model.traces.toSet
+    val t2 = model().itraces.map(x => x().element.elems).toSet
 
     if (t1 != t2) {
       println("t1: " + t1)

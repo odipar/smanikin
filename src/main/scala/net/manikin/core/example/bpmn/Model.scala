@@ -1,5 +1,8 @@
 package net.manikin.core.example.bpmn
 
+import net.manikin.core.example.bpmn.OrGateway.OrGatewayId
+import net.manikin.core.example.bpmn.ParallelGateway.ParallelGatewayId
+
 object Model {
   import net.manikin.core.asm.AbstractStateMachine._
   import java.util.UUID
@@ -16,37 +19,37 @@ object Model {
     def contains(elm: EID)(implicit ctx: Context): Boolean = this().main.contains(elm)
     def prettyStringModel(level: Int)(implicit ctx: Context): String = this().main.prettyString(level)
     def prettyStringTraces(level: Int)(implicit ctx: Context): String = {
-      val tr = this().traces
-      tr.indices.map(i => { val x = tr(i) ; (i + 1).toString + ": " + x.prettyString(level + 1)}).mkString("\n")
+      val tr = this().itraces
+      tr.indices.map(i => { val x = tr(i) ; x + ": " + x.prettyString(level + 1)}).mkString("\n")
     }
   }
-  
-  case class ModelData(main: BranchId = BranchId(), traces: Seq[TraceId] = Seq())
+
+  case class ModelData(main: BranchId = BranchId(), itraces: Seq[TraceId] = Seq())
 
   trait ModelTrs extends Transition[ModelData] {
     type ID = ModelId
 
     def main = self().main
-    def traces = self().traces
+    def itraces = self().itraces
   }
 
   def addTraces(self: ModelId, t: TRACES)(implicit ctx: Context): Unit = {
     val traces = t.map(x => (TraceId(), x)).toMap
     traces.foreach(x => Trace.Init(x._2) --> x._1)
-    self() = self().copy(traces = self().traces ++ traces.keys.toSeq)
+    self() = self().copy(itraces = self().itraces ++ traces.keys.toSeq)
   }
-  
+
   case class Init(startEvent: StartEventId, endEvent: EndEventId) extends ModelTrs {
-    def pre = !self.contains(startEvent) && !self.contains(endEvent) && self().traces.isEmpty
+    def pre = !self.contains(startEvent) && !self.contains(endEvent) && self().itraces.isEmpty
     def app = {
-                Element.SetName("model") --> main
+                SetName(main, "main") --> self
                 addTraces(self, main.traces)
                 AddToBranch(main, startEvent) --> self
                 AddToBranch(main, endEvent) --> self
               }
-    def pst = self.contains(startEvent) && self.contains(endEvent) && self().traces.size == 1
+    def pst = self.contains(startEvent) && self.contains(endEvent) && self().itraces.size == 1
   }
-  
+
   case class Insert(before: EID, after: EID) extends ModelTrs {
     def pre =   self.contains(before) && !self.contains(after)
     def app =   { main.insert(before, after) ; cloneAndPatch(self, before, after, afterLastIndex) }
@@ -54,17 +57,32 @@ object Model {
   }
 
   case class SetName(elem: EID, name: String) extends ModelTrs {
-    def pre =   true
+    def pre =   self.contains(elem)
     def app =   Element.SetName(name) --> elem
     def pst =   true
   }
 
-  case class AddBranch(gateway: GatewayId[Any], branch: BranchId) extends ModelTrs {
+  case class AddOrBranch(gateway: OrGatewayId, branch: BranchId) extends ModelTrs {
     def pre =   self.contains(gateway) && !self.contains(branch)
     def app =   {
                   if (gateway().element.branches.nonEmpty) {
                     Gateway.AddBranch(branch) --> gateway
                     addTraces(self, self.traces.filter(_.contains(branch)))
+                  }
+                  else {
+                    Gateway.AddBranch(branch) --> gateway
+                    cloneAndPatch(self, gateway, branch, afterFirstIndex)
+                  }
+                }
+    def pst =   self.contains(gateway) && self.contains(branch)
+  }
+  
+  case class AddParallelBranch(gateway: ParallelGatewayId, branch: BranchId) extends ModelTrs {
+    def pre =   self.contains(gateway) && !self.contains(branch)
+    def app =   {
+                  if (gateway().element.branches.nonEmpty) {
+                    Gateway.AddBranch(branch) --> gateway
+                    cloneAndPatch(self, gateway, branch, beforeLastIndex)
                   }
                   else {
                     Gateway.AddBranch(branch) --> gateway
@@ -87,7 +105,8 @@ object Model {
 
   def cloneAndPatch(self: ModelId, target: EID, elem: EID, i: (Seq[EID], EID) => Int)(implicit ctx: Context) = {
     val sub_traces = elem.traces
-    self().traces.filter(_.contains(target)).foreach { t =>
+
+    self().itraces.filter(_.contains(target)).foreach { t =>
       addTraces(self, sub_traces.tail.map(st => t.clone(target, st, i)))
       t.patch(target, sub_traces.head, i)
     }

@@ -14,5 +14,13 @@ object ParallelGateway {
     override def traces(implicit ctx: Context): TRACES = {
       product(this, this().element.branches.map(_.traces))
     }
+
+    override def prettyString(level: Int)(implicit ctx: Context): String = {
+      ("  " * level) + this().name +
+        "(\n" +
+        this().element.branches.map(x => x.prettyString(level + 1)).mkString("\n") +
+        "\n" +
+        ("  " * level) + ")"
+    }
   }
 }
