@@ -65,7 +65,7 @@ object Transaction {
   trait Trs extends StateTransition[Data]
 
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Trs {
-    def nst =   { case "Initial" => "Opened" }
+    def nst =   { case "Initial" => "Created" }
     def pre =   from().state == "Opened" && to().state == "Opened"
     def apl =   data() = data().copy(from = from, to = to, amount = amount)
     def pst =   data().from == from && data().to == to && data().amount == amount
