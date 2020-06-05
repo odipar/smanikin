@@ -1,9 +1,8 @@
-package net.manikin.core.example
+package net.manikin.example.bank
 
 // Plain vanilla Account (no annotations)
 object Account {
-  import net.manikin.core.asm.TransactionalObject._
-  import net.manikin.core.example.IBAN.IBAN
+  import net.manikin.core.TransactionalObject._
 
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)

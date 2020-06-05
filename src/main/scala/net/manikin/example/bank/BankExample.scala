@@ -1,8 +1,7 @@
-package net.manikin.core.example
+package net.manikin.example.bank
 
 object BankExample {
-  import net.manikin.core.asm.TransactionalObject._
-  import net.manikin.core.example.IBAN.IBAN
+  import net.manikin.core.TransactionalObject._
 
   def main(args: Array[String]): Unit = {
     implicit val c = new TransactionContext()

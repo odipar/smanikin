@@ -1,4 +1,4 @@
-package net.manikin.core
+package net.manikin.main
 
 object Main {
 
