@@ -1,6 +1,5 @@
 package net.manikin.example.bank
 
-// Plain vanilla Account (no annotations)
 object Account {
   import net.manikin.core.TransactionalObject._
   import IBAN._
