@@ -8,7 +8,7 @@ object Transaction {
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Msg extends STMessage[Data, Unit]
+  trait Msg extends StateMessage[Data, Unit]
 
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
     def nst =   { case "Initial" => "Created" }
@@ -24,7 +24,7 @@ object Transaction {
 
     def nst =   { case "Created" => "Committed" }
     def pre =   true
-    def apl =   { data().from <-- Withdraw(amt) ; to <-- Deposit(amt) }
+    def apl =   { data().from <~ Withdraw(amt) ; to <~ Deposit(amt) }
     def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
   }
 }

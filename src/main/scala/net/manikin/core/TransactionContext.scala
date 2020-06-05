@@ -71,12 +71,12 @@ object TransactionContext {
           }
           else {
             failure = PostFailed(vid, id()(this), message)
-            throw new FailureException(failure)
+            throw FailureException(failure)
           }
         }
         else {
           failure = PreFailed(vid, id()(this), message)
-          throw new FailureException(failure)
+          throw FailureException(failure)
         }
       }
       catch {

@@ -50,7 +50,7 @@ object TransactionalObject {
   case class DataID[+X](self: StateId[X])
 
   // State transition Message
-  trait STMessage[+X, +R] extends Message[State[X], R] {
+  trait StateMessage[+X, +R] extends Message[State[X], R] {
     type ID <: StateId[X]
 
     def data = DataID(self)
@@ -85,12 +85,8 @@ object TransactionalObject {
     def pst: Boolean
   }
 
-  implicit class MessageSyntax[X, +R](t: Message[X, R]) {
-    def -->(id: Id[X])(implicit ctx: Context): R = ctx.send(id, t)
-  }
-
   implicit class IdSyntax[X](id: Id[X]) {
-    def <--[R](t: Message[X, R])(implicit ctx: Context): R = ctx.send(id, t)
+    def <~[R](t: Message[X, R])(implicit ctx: Context): R = ctx.send(id, t)
     def update(x: X)(implicit ctx: Context): Unit = ctx.set(id, x)
   }
 

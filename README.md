@@ -1,6 +1,6 @@
 # Manikin
 Manikin is an embedded Scala DSL that can be used to implement Transactional Objects - Objects that live in Transactions.
-Its most prominent feature is the use of pre- and post-conditions during Message dispatch, so that the state of an Object can be guarded and more easily model checked.
+Its most prominent feature is the use of pre- and post-conditions during Message dispatch, so that Object states can be guarded and more easily model checked.
 
 Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory).
 
@@ -15,7 +15,7 @@ Next to that, Manikin can also be configured to run on top of multi-threaded, co
 A lot of Scala (implicit) trickery is used to reduce the amount of boilerplate to a minimum. 
 The goal of Manikin is to be able to specify Objects and Messages as succinctly as possible while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
 
-Here is an example:
+Here is a Bank example:
 ```scala
 // Plain vanilla Account (no annotations)
 object Account {
@@ -25,7 +25,7 @@ object Account {
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)
 
-  trait Msg extends STMessage[Data, Unit] {
+  trait Msg extends StateMessage[Data, Unit] {
     def balance =       data().balance
     def prev_balance =  data.prev.balance
   }
@@ -61,7 +61,7 @@ object Transaction {
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Msg extends STMessage[Data, Unit]
+  trait Msg extends StateMessage[Data, Unit]
 
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
     def nst =   { case "Initial" => "Created" }
@@ -77,8 +77,36 @@ object Transaction {
 
     def nst =   { case "Created" => "Committed" }
     def pre =   true
-    def apl =   { from <-- Withdraw(amt) ; to <-- Deposit(amt) }
+    def apl =   { from <~ Withdraw(amt) ; to <~ Deposit(amt) }
     def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
+  }
+}
+``` 
+```scala
+object Main {
+  import net.manikin.core.TransactionalObject._
+  import net.manikin.core.TransactionContext._
+  import IBAN._
+
+  def main(args: Array[String]): Unit = {
+    implicit val c: Context = new TransactionContext()
+
+    val a1 = Account.Id(iban = IBAN("A1"))
+    val a2 = Account.Id(iban = IBAN("A2"))
+    val t1 = Transaction.Id(id = 1)
+    val t2 = Transaction.Id(id = 2)
+
+    a1 <~ Account.Open(initial = 80.0)
+    a2 <~ Account.Open(initial = 120.0)
+    t1 <~ Transaction.Create(from = a1, to = a2, amount = 30.0)
+    t1 <~ Transaction.Commit()
+    t2 <~ Transaction.Create(from = a1, to = a2, amount = 20.0)
+    t2 <~ Transaction.Commit()
+
+    println("a1: " + c(a1)) // a1: State(Data(30.0),Opened)
+    println("a2: " + c(a2)) // a2: State(Data(170.0),Opened)
+    println("t1: " + c(t1)) // t1: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Committed)
+    println("t2: " + c(t2)) // t2: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),20.0),Committed)
   }
 }
 ```
