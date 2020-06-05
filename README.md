@@ -1,52 +1,49 @@
 # Manikin
-Manikin is an embedded Scala DSL that can be used to implement Abstract State Machines (ASMs).
-Its most prominent feature is the use of pre- and post-conditions so that the state of ASMs can be guarded and more easily model checked.
+Manikin is an embedded Scala DSL that can be used to implement Transactional Objects and Messages.
+Its most prominent feature is the use of pre- and post-conditions during Message dispatch, so that the state of an Object can be guarded and more easily model checked.
 
-Manikin is inspired by the [Rebel](https://github.com/cwi-swat/rebel) DSL (with some important deviations).
-Another source of inspiration is the [Eiffel](https://www.eiffel.com) programming language.
+Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory)
 
-(It can be argued that Rebel is a restricted version of Eiffel, as Rebel does not allow *conditional* transitions)
+### Message dispatch through Contexts
+Message dispatch is performed via Transactional Contexts that are updated and passed through after each (nested) dispatch.
+Each time a Context is updated, a new version is created, for instance when an Object is written to a Context.
 
-### Updates through Contexts
-Evaluation is done via a Context object, which is updated and passed through after each evaluation step.
-Every time a Context is updated, a new version is created, for instance when an ASM is written to a Context.
-
-As a result, it will be easier to do analyses on failures, because Manikin keeps a full trace of all intermediate Contexts. 
-
+With Contexts it is easier to do analyses on failures or rollback on failure, because Manikin keeps a full trace of all intermediate Object states. 
+Next to that, Manikan can also be configured to run on top of multi-threaded, concurrent or distributed Transactional Contexts, with very strong transactional guarantees (fully Serializable).  
+                                                           
 ### Syntax and types
 A lot of Scala (implicit) trickery is used to reduce the amount of boilerplate syntax to a minimum. 
-The goal of Manikin is to be able to specify an ASM as succinctly as possible while being *statically* typed (as Thunk piggybacks on Scala's advanced typed system). 
+The goal of Manikin is to be able to specify a Transactional Objects and Messages as succinctly as possible while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
 
 Here is an example:
 ```scala
-// Plain vanilla Account (no annotations)
 object Account {
-  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.asm.TransactionalObject._
   import net.manikin.core.example.IBAN.IBAN
 
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)
 
-  trait Trs extends StateTransition[Data] {
+  trait Msg extends STMessage[Data, Unit] {
     def balance =       data().balance
     def prev_balance =  data.prev.balance
   }
 
-  case class Open(initial: Double) extends Trs {
+  case class Open(initial: Double) extends Msg {
     def nst =   { case "Initial" => "Opened" }
     def pre =   initial > 0
     def apl =   data() = data().copy(balance = initial)
     def pst =   balance == initial
   }
-  
-  case class Withdraw(amount: Double) extends Trs {
+
+  case class Withdraw(amount: Double) extends Msg {
     def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0.0 && balance > amount
     def apl =   data() = data().copy(balance = balance - amount)
     def pst =   balance == prev_balance - amount
   }
-                                                                               
-  case class Deposit(amount: Double) extends Trs {
+
+  case class Deposit(amount: Double) extends Msg {
     def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0
     def apl =   data() = data().copy(balance = balance + amount)
@@ -55,23 +52,24 @@ object Account {
 }
 ```
 ```scala
+// Plain vanilla Transaction (no annotations)
 object Transaction {
-  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.asm.TransactionalObject._
   import net.manikin.core.example.Account._
 
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Trs extends StateTransition[Data]
+  trait Msg extends STMessage[Data, Unit]
 
-  case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Trs {
+  case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
     def nst =   { case "Initial" => "Created" }
     def pre =   from().state == "Opened" && to().state == "Opened"
     def apl =   data() = data().copy(from = from, to = to, amount = amount)
     def pst =   data().from == from && data().to == to && data().amount == amount
   }
 
-  case class Commit() extends Trs {
+  case class Commit() extends Msg {
     def amt =   data().amount
     def from =  data().from
     def to =    data().to
