@@ -45,7 +45,6 @@ object Main {
 }
 ```
 ```scala
-// Plain vanilla Account (no annotations)
 object Account {
   import net.manikin.core.TransactionalObject._
   import IBAN._
@@ -81,7 +80,6 @@ object Account {
 }
 ```
 ```scala
-// Plain vanilla Transaction (no annotations)
 object Transaction {
   import net.manikin.core.TransactionalObject._
   import Account._
