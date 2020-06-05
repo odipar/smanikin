@@ -23,7 +23,6 @@ object TransactionalObject {
 
     def withFailure(f: Failure): Unit
     def previous: Context
-    //def revert(c: Context): Unit
   }
 
   case class NextStateException[+X, +R](id: Id[X], state: X, message: Message[X, R]) extends Failure

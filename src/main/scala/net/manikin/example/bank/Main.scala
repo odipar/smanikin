@@ -16,11 +16,11 @@ object Main {
     a1 <-- Account.Open(initial = 80.0)
     a2 <-- Account.Open(initial = 120.0)
     t1 <-- Transaction.Create(from = a1, to = a2, amount = 30.0)
-    t2 <-- Transaction.Commit()
+    t1 <-- Transaction.Commit()
     t2 <-- Transaction.Create(from = a1, to = a2, amount = 20.0)
     t2 <-- Transaction.Commit()
 
-    println("c: " + c.versions)
+    println("c.allState: " + c.allState)
 
   }
 }

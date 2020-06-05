@@ -24,7 +24,7 @@ object Transaction {
 
     def nst =   { case "Created" => "Committed" }
     def pre =   true
-    def apl =   { Withdraw(amt) --> data().from ; Deposit(amt) --> to }
+    def apl =   { data().from <-- Withdraw(amt) ; to <-- Deposit(amt) }
     def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
   }
 }

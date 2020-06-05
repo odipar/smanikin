@@ -3,6 +3,7 @@ package net.manikin.core
 object TransactionContext {
   import TransactionalObject._
 
+  // Simple TransactionContext that keeps track of (historical) Object states and Message dispatches
   class TransactionContext() extends Context with Cloneable {
     private var failure: Failure = null
     private var level = 0
@@ -52,6 +53,7 @@ object TransactionContext {
       val vid = VId(id, version(id))
       val previous_context = this.clone.asInstanceOf[TransactionContext]
 
+      // inject Context and 'self' into Message so it will be in scope
       message.selfVar = id
       message.contextVar = this
 
