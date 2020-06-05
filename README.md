@@ -1,6 +1,6 @@
 # Manikin
-Manikin is an embedded Scala DSL that can be used to implement Transactional Objects - Objects that live in transactions.
-Its most prominent feature is the use of pre- and post-conditions during Message dispatch, so that the state of an Object can be guarded and more easily model checked.
+Manikin is an embedded Scala DSL that can be used to implement Transactional Objects - Objects that live in Transactions.
+Manikin's most prominent feature is the use of pre- and post-conditions during Message dispatch, so that the state of an Object can be guarded and more easily model checked.
 
 Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory).
 
