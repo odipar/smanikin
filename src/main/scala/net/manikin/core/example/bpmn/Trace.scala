@@ -11,7 +11,7 @@ object Trace {
     def initElement = TraceData()
 
     override def insert(before: EID, after: EID)(implicit ctx: Context) = {
-      if (contains(before)) Insert(before, after) --> this
+      if (this != before && contains(before)) Insert(before, after) --> this
     }
 
     override def contains(other: EID)(implicit ctx: Context) = {

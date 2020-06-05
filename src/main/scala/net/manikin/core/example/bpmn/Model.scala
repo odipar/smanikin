@@ -56,8 +56,14 @@ object Model {
     def pst =   self.contains(before) && self.contains(after)
   }
 
+  /*case class InsertEndEvent(before: EID, after: EndEventId) extends ModelTrs {
+    def pre =   self.contains(before) && !self.contains(after)
+    def app =   { main.insert(before, after) ; cloneAndPatch(self, before, after, afterLastIndex) }
+    def pst =   self.contains(before) && self.contains(after)
+  } */
+
   case class SetName(elem: EID, name: String) extends ModelTrs {
-    def pre =   self.contains(elem)
+    def pre =   self.contains(elem)                                                            
     def app =   { Element.SetName(name) --> elem ; self().itraces.foreach(_.setName(elem, name)) }
     def pst =   true
   }

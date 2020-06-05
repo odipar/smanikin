@@ -65,7 +65,6 @@ object AbstractStateMachine {
       val vid = VId(id, version(id))
       val previous_context: Context = this.clone.asInstanceOf[Context]
 
-
       transition.selfVar = id
       transition.contextVar = this
 

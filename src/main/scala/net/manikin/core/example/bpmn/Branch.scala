@@ -1,9 +1,10 @@
 package net.manikin.core.example.bpmn
 
+
 object Branch {
   import net.manikin.core.example.bpmn.Element._
   import net.manikin.core.asm.AbstractStateMachine._
-  
+
   import java.util.UUID
 
   case class BranchData(elems: Seq[EID] = Seq())
@@ -16,7 +17,7 @@ object Branch {
     }
 
     override def insert(before: EID, after: EID)(implicit ctx: Context) = {
-      if (contains(before)) Insert(before, after) --> this
+      if (this != before && contains(before)) Insert(before, after) --> this
     }
     
     override def contains(other: EID)(implicit ctx: Context)  = {

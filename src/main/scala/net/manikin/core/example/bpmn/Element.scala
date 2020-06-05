@@ -1,7 +1,9 @@
 package net.manikin.core.example.bpmn
 
+
 object Element {
   import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.example.bpmn.EndEvent.EndEventId
 
   case class ElementData[+X](name: String, element: X)
 
@@ -15,11 +17,16 @@ object Element {
     def traces(implicit ctx: Context) : TRACES = Seq(Seq(this))
     def insert(before: EID, after: EID)(implicit ctx: Context): Unit = { }
     def contains(other: EID)(implicit ctx: Context) : Boolean = this == other
-
     def product(i: ElementId[Any], s: Seq[TRACES]): TRACES = {
-      s.fold(Seq(Seq(i)))((x, y) => x.flatMap(xx => y.map(yy => xx ++ yy))).map(x => x ++ Seq(i))
+      s.fold(Seq(Seq(i)))((x, y) => {
+        x.flatMap(xx => {
+          if (xx.exists(_.isInstanceOf[EndEventId])) {
+            Seq(xx)
+          }
+          else y.map(yy => xx ++ yy)
+        })
+      }).map(x => x ++ Seq(i))
     }
-    
     def prettyString(level: Int)(implicit ctx: Context): String = ("  " * level) + this().name
   }
 
