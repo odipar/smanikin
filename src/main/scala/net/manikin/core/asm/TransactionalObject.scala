@@ -1,6 +1,6 @@
 package net.manikin.core.asm
 
-object AbstractStateMachine {
+object TransactionalObject {
 
   import scala.language.implicitConversions
 
@@ -10,24 +10,24 @@ object AbstractStateMachine {
     override def toString = "FailureException(" + f + ")"
   }
 
-  case class PreFailed[+X](id: VId[X], state: X, transition: Transition[X]) extends Failure
-  case class PostFailed[+X](id: VId[X], state: X, transition: Transition[X]) extends Failure
+  case class PreFailed[+X, +R](id: VId[X], state: X, message: Message[X, R]) extends Failure
+  case class PostFailed[+X, +R](id: VId[X], state: X, message: Message[X, R]) extends Failure
   case class ExceptionFailure(t: Throwable) extends Failure {
     override def toString = "ExceptionFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
   }
 
-  class Context() extends Cloneable {
+  class TransactionContext() extends Cloneable {
     private var failure: Failure = null
     private var level = 0
-    private var previousContext: Context = _
+    private var previousContext: TransactionContext = _
     private var vStateMap: Map[Id[_], Long] = Map()
     private var stateMap: Map[Id[_], _] = Map()
     private var reads: Set[VId[_]] = Set()
     private var writes: Set[VId[_]] = Set()
-    private var sends: Vector[Send[_]] = Vector()
+    private var sends: Vector[Send[_, _]] = Vector()
 
-    def previous: Context = previousContext
-    def sent: Vector[Send[_]] = sends
+    def previous: TransactionContext = previousContext
+    def sent: Vector[Send[_, _]] = sends
     def written: Set[VId[_]] = writes
     def read: Set[VId[_]] = reads
     def allState: Map[Id[_], _] = stateMap
@@ -53,7 +53,7 @@ object AbstractStateMachine {
       vStateMap = vStateMap + (id -> (v + 1))
     }
 
-    def revert(c: Context): Unit = {
+    def revert(c: TransactionContext): Unit = {
       previousContext = c.previousContext
       vStateMap = c.vStateMap
       reads = c.reads
@@ -61,31 +61,32 @@ object AbstractStateMachine {
       sends = c.sends
     }
 
-    def send[X](id: Id[X], transition: Transition[X]): Unit = {
+    def send[X, R](id: Id[X], message: Message[X, R]): R = {
       val vid = VId(id, version(id))
-      val previous_context: Context = this.clone.asInstanceOf[Context]
+      val previous_context: TransactionContext = this.clone.asInstanceOf[TransactionContext]
 
-      transition.selfVar = id
-      transition.contextVar = this
+      message.selfVar = id
+      message.contextVar = this
 
       level += 1
       sends = Vector()
 
       try {
-        if (transition.pre) {
-          transition.app
+        if (message.pre) {
+          val result = message.app
           previousContext = previous_context
-          if (transition.pst) {
+          if (message.pst) {
             level -= 1
-            sends = (previous_context.sends :+ Send(level, vid, transition)) ++ sends
+            sends = (previous_context.sends :+ Send(level, vid, message)) ++ sends
+            result
           }
           else {
-            failure = PostFailed(vid, id()(this), transition)
+            failure = PostFailed(vid, id()(this), message)
             throw new FailureException(failure)
           }
         }
         else {
-          failure = PreFailed(vid, id()(this), transition)
+          failure = PreFailed(vid, id()(this), message)
           throw new FailureException(failure)
         }
       }
@@ -98,20 +99,20 @@ object AbstractStateMachine {
       }
     }
   }
-  
-  case class NextStateException[+X](id: Id[X], state: X, transition: Transition[X]) extends Failure
+
+  case class NextStateException[+X, +R](id: Id[X], state: X, message: Message[X, R]) extends Failure
 
   case class VId[+X](id: Id[X], version: Long) {
     override def toString: String = version + ":" + id
   }
 
-  case class Send[+X](level: Int, vid: VId[X], transition: Transition[X])
+  case class Send[+X, +R](level: Int, vid: VId[X], message: Message[X, R])
 
   trait Id[+X] {
     def init: X
 
-    def prev(implicit ctx: Context): X = ctx.previous(this)
-    def apply()(implicit ctx: Context): X = ctx(this)
+    def prev(implicit ctx: TransactionContext): X = ctx.previous(this)
+    def apply()(implicit ctx: TransactionContext): X = ctx(this)
   }
 
   case class State[+X](data: X, state: String)
@@ -123,54 +124,57 @@ object AbstractStateMachine {
 
   case class DataID[+X](self: StateId[X])
 
-  trait StateTransition[+X] extends Transition[State[X]] {
+  // State transition Message
+  trait STMessage[+X, +R] extends Message[State[X], R] {
     type ID <: StateId[X]
-    
+
     def data = DataID(self)
 
     def nst: PartialFunction[String, String]
-    def app: Unit = {
+    def app: R = {
       val st = self().state
 
-      if (nst.isDefinedAt(st)) { self() = self().copy(state = nst(self().state)); apl }
+      if (nst.isDefinedAt(st)) { self() = self().copy(state = nst(self().state)) ; apl }
       else {
         val f = NextStateException(self, self(), this)
         context.withFailure(f)
         throw FailureException(f)
       }
     }
-    def apl: Unit
+    def apl: R
   }
 
-  trait Transition[+X] {
+  trait Message[+X, +R] {
     type ID <: Id[X]
 
-    var contextVar: Context = _
+    // context and self will be injected
+    var contextVar: TransactionContext = _
     var selfVar: Id[_] = _
 
-    implicit def context: Context = contextVar
+    implicit def context: TransactionContext = contextVar
 
     def self: ID = selfVar.asInstanceOf[ID]
 
     def pre: Boolean
-    def app: Unit
+    def app: R
     def pst: Boolean
   }
 
-  implicit class TransitionSyntax[X](t: Transition[X]) {
-    def -->(id: Id[X])(implicit ctx: Context): Unit = ctx.send(id, t)
+  implicit class MessageSyntax[X, +R](t: Message[X, R]) {
+    def -->(id: Id[X])(implicit ctx: TransactionContext): R = ctx.send(id, t)
   }
 
-  implicit class IdContext[X](id: Id[X]) {
-    def update(x: X)(implicit ctx: Context): Unit = ctx.set(id, x)
+  implicit class IdSyntax[X](id: Id[X]) {
+    def <--[R](t: Message[X, R])(implicit ctx: TransactionContext): R = ctx.send(id, t)
+    def update(x: X)(implicit ctx: TransactionContext): Unit = ctx.set(id, x)
   }
 
-  implicit class StateIdContext[+X](id: DataID[X]) {
-    def apply()(implicit ctx: Context): X = id.self().data
-    def prev(implicit ctx: Context): X = id.self.prev.data
+  implicit class StateIdSyntax[+X](id: DataID[X]) {
+    def apply()(implicit ctx: TransactionContext): X = id.self().data
+    def prev(implicit ctx: TransactionContext): X = id.self.prev.data
   }
 
-  implicit class StateIdContext2[X](id: DataID[X]) {
-    def update(x: X)(implicit ctx: Context): Unit = ctx.set(id.self, id.self().copy(data = x))
+  implicit class StateIdSyntax2[X](id: DataID[X]) {
+    def update(x: X)(implicit ctx: TransactionContext): Unit = ctx.set(id.self, id.self().copy(data = x))
   }
 }

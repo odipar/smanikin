@@ -2,22 +2,22 @@ package net.manikin.core.example
 
 // Plain vanilla Transaction (no annotations)
 object Transaction {
-  import net.manikin.core.asm.AbstractStateMachine._
+  import net.manikin.core.asm.TransactionalObject._
   import net.manikin.core.example.Account._
 
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Trs extends StateTransition[Data]
+  trait Msg extends STMessage[Data, Unit]
 
-  case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Trs {
+  case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
     def nst =   { case "Initial" => "Created" }
     def pre =   from().state == "Opened" && to().state == "Opened"
     def apl =   data() = data().copy(from = from, to = to, amount = amount)
     def pst =   data().from == from && data().to == to && data().amount == amount
   }
 
-  case class Commit() extends Trs {
+  case class Commit() extends Msg {
     def amt =   data().amount
     def from =  data().from
     def to =    data().to
