@@ -12,10 +12,10 @@ object TransactionContext {
     private var stateMap: Map[Id[_], _] = Map()
     private var reads: Set[VId[_]] = Set()
     private var writes: Set[VId[_]] = Set()
-    private var sends: Vector[Send[_, _]] = Vector()
+    private var sends: Vector[Send[_, _, _]] = Vector()
 
     def previous: Context = previousContext
-    def sent: Vector[Send[_, _]] = sends
+    def sent: Vector[Send[_, _, _]] = sends
     def written: Set[VId[_]] = writes
     def read: Set[VId[_]] = reads
     def allState: Map[Id[_], _] = stateMap
@@ -49,8 +49,8 @@ object TransactionContext {
       sends = c.sends
     }
 
-    def send[X, R](id: Id[X], message: Message[X, R]): R = {
-      val vid = VId(id, version(id))
+    def send[X, I <: Id[X], R](id: I, message: Message[X, I, R]): R = {
+      val vid = VId[X](id, version(id))
       val previous_context = this.clone.asInstanceOf[TransactionContext]
 
       // inject Context and 'self' into Message so it will be in scope
@@ -66,7 +66,8 @@ object TransactionContext {
           previousContext = previous_context
           if (message.pst) {
             level -= 1
-            sends = (previous_context.sends :+ Send(level, vid, message)) ++ sends
+            val s =  Send(level, vid, message)
+            sends = (previous_context.sends :+ s)  ++ sends
             result
           }
           else {
@@ -88,4 +89,13 @@ object TransactionContext {
       }
     }
   }
+
+  case class VId[+X](id: Id[X], version: Long) {
+    override def toString: String = version + ":" + id
+  }
+
+  case class Send[+X, I <: Id[X], +R](level: Int, vid: VId[X], message: Message[X, I, R])
+  case class PreFailed[+X, I <: Id[X], +R](id: VId[X], state: X, message: Message[X, I, R]) extends Failure
+  case class PostFailed[+X, I <: Id[X], +R](id: VId[X], state: X, message: Message[X, I, R]) extends Failure
+
 }

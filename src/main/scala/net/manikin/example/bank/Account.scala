@@ -1,13 +1,13 @@
 package net.manikin.example.bank
 
 object Account {
-  import net.manikin.core.TransactionalObject._
+  import net.manikin.core.StateMachineObject._
   import IBAN._
   
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)
 
-  trait Msg extends StateMessage[Data, Unit] {
+  trait Msg extends StateMessage[Data, Id, Unit] {
     def balance =       data().balance
     def prev_balance =  data.prev.balance
   }

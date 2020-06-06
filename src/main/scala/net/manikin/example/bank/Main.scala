@@ -23,7 +23,7 @@ object Main {
     println("a1: " + c(a1)) // a1: State(Data(30.0),Opened)
     println("a2: " + c(a2)) // a2: State(Data(170.0),Opened)
     println("t1: " + c(t1)) // t1: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Committed)
-    println("t2: " + c(t2)) // t2: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),20.0),Committed)
+    println("t2: " + c(t2)) // t2: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),20.0),Committed)     
   }
 }
 

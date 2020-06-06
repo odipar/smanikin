@@ -1,5 +1,5 @@
 # Manikin
-Manikin is an embedded Scala DSL that can be used to implement Transactional Objects - Objects that live in Transactions.
+Manikin is an embedded Scala DSL that can be used to implement Transactional Objects - Objects that are controlled with Transactions.
 Its most prominent feature is the use of pre- and post-conditions during Message dispatch, so that Object states can be guarded and more easily model checked.
 
 Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory).
@@ -46,13 +46,13 @@ object Main {
 ```
 ```scala
 object Account {
-  import net.manikin.core.TransactionalObject._
+  import net.manikin.core.StateMachineObject._
   import IBAN._
   
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Double = 0.0)
 
-  trait Msg extends StateMessage[Data, Unit] {
+  trait Msg extends StateMessage[Data, Id, Unit] {
     def balance =       data().balance
     def prev_balance =  data.prev.balance
   }
@@ -81,13 +81,13 @@ object Account {
 ```
 ```scala
 object Transaction {
-  import net.manikin.core.TransactionalObject._
+  import net.manikin.core.StateMachineObject._
   import Account._
   
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Msg extends StateMessage[Data, Unit]
+  trait Msg extends StateMessage[Data, Id, Unit]
 
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
     def nst =   { case "Initial" => "Created" }
@@ -103,8 +103,8 @@ object Transaction {
 
     def nst =   { case "Created" => "Committed" }
     def pre =   true
-    def apl =   { from <~ Withdraw(amt) ; to <~ Deposit(amt) }
+    def apl =   { data().from <~ Withdraw(amt) ; to <~ Deposit(amt) }
     def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
-  }
+  }        
 }
 ``` 
