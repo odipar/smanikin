@@ -7,9 +7,9 @@ object  Transaction {
   case class TransactionId  (id: Long) extends StateId[TransactionData] { def initData = TransactionData() }
   case class TransactionData(from: Account.AccountId = null, to: Account.AccountId = null, amount: Double = 0.0)
 
-  trait Msg[+R] extends StateMessage[TransactionData, TransactionId, R]
+  trait TransactionMessage[+R] extends StateMessage[TransactionData, TransactionId, R]
 
-  case class Create(from: Account.AccountId, to: Account.AccountId, amount: Double) extends Msg[Unit] {
+  case class Create(from: Account.AccountId, to: Account.AccountId, amount: Double) extends TransactionMessage[Unit] {
     def nst = { case "Initial" => "Created" }
     def pre = { amount > 0 && from != to }
     def apl = { data.copy(from = from, to = to, amount = amount) }
@@ -17,7 +17,7 @@ object  Transaction {
     def pst = { data.from == from && data.to == to && data.amount == amount }
   }
 
-  case class Commit() extends Msg[Unit] {
+  case class Commit() extends TransactionMessage[Unit] {
     def nst = { case "Created" => "Committed" }
     def pre = { true }
     def apl = { data }

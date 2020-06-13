@@ -39,8 +39,8 @@ object TransactionalObject {
 
   /*
    * A Context acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
-   * In order to send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
-   * An Context implementation is optionally responsible for Transactional guarantees when a Message is committed
+   * To send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
+   * A Context implementation is optionally responsible for Transactional guarantees when a Message is committed
    */
   trait Context {
     def apply[O](id: Id[O]): VObject[O]
@@ -61,7 +61,7 @@ object TransactionalObject {
   case class FailureException(f: Failure) extends Exception {
     override def toString = "FailureException(" + f + ")"
   }
-  case class ExceptionFailure(t: Throwable, snapshot: Map[Id[_], Long] = Map()) extends Failure {
+  case class ExceptionFailure(t: Throwable) extends Failure {
     override def toString = "ExceptionFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
   }
 

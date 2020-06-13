@@ -18,7 +18,7 @@ object StateMachineObject {
     def old_data(implicit ctx: Context): O = old_obj.data
   }
 
-  // StateObjects go through 'transitions' - from one abstract state to another
+  // A StateObject goes through 'transitions' - from one abstract state to another
   trait StateMessage[+O, +I <: StateId[O], +R] extends Message[StateObject[O], I, R] {
     def state : String = self.state
     def old_state : String = self.old_state

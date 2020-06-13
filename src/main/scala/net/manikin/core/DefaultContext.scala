@@ -8,29 +8,34 @@ object DefaultContext {
     private var failure_ : Failure = null
     private var level = 0
     private var previousContext: DefaultContext = null
-    private var stateMap: Map[Id[_], VObject[_]] = Map()
-    var reads: Map[Id[_], Long] = Map()
-    var writes: Map[Id[_], Long] = Map()
-    private var sends: Vector[STYPE] = Vector()
+    var stateMap: Map[Id[_], VObject[_]] = Map()
+    var reads: Set[Id[_]] = Set()
+    var writes: Set[Id[_]] = Set()
+    var sends: Vector[STYPE] = Vector()
 
-    def snapshot: Map[Id[_], Long] = reads ++ writes
+    private def substate(ids: Set[Id[_]]): Map[Id[_], VObject[_]] = {
+      ids.map(id => (id, stateMap.getOrElse(id, VObject(0, id.init)))).toMap
+    }
+
+    private def versions(ids: Set[Id[_]]): Map[Id[_], Long] = {
+      substate(ids).map(x => (x._1, x._2.version))
+    }
+    
+    def snapshot: Map[Id[_], VObject[_]] = substate(reads ++ writes)
     def previous: Context = previousContext
     def previousDefaultContext: DefaultContext = previousContext
 
     def withFailure(f: Failure): Unit = failure_ = f
     def failure: Failure = failure_
-
-    def update(updates: Map[Id[_], VObject[_]]): Unit = {
-      stateMap = stateMap ++ updates
-    }
+    def update(updates: Map[Id[_], VObject[_]]): Unit = stateMap = stateMap ++ updates
 
     def commit(s: Store): Option[CommitFailure] = {
-      val result = s.commit(reads, writes, sends)
+      val result = s.commit(versions(reads), versions(writes), sends)
 
       if (result.isEmpty) {
         val prev = this.clone.asInstanceOf[DefaultContext]
-        reads = Map()
-        writes = Map()
+        reads = Set()
+        writes = Set()
         sends = Vector()
         failure_ = null
         previousContext = prev
@@ -41,18 +46,19 @@ object DefaultContext {
 
     def apply[O](id: Id[O]): VObject[O] = {
       val vobj = stateMap.getOrElse(id, VObject(0, id.init))
-      reads = reads + (id -> (reads.getOrElse(id, Long.MaxValue) min vobj.version))
+      reads = reads + id
       vobj.asInstanceOf[VObject[O]]
     }
 
-    def copyOf(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
-    
+    def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
+
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {
       val old = stateMap.getOrElse(id, VObject(0, id.init))
       val vid = VId(old.version, id)
 
-      val new_context = copyOf()
-
+      val new_context = copyThis()
+      val previous = copyThis()
+      
       new_context.previousContext = this
       new_context.level = level + 1
       new_context.sends = Vector()
@@ -66,41 +72,41 @@ object DefaultContext {
 
           val new_self = message.app
 
-          // New version
           if (new_self != old.obj) {
-            val nwrites = new_context.writes
             new_context.stateMap = new_context.stateMap + (id -> VObject(old.version + 1, new_self))
-            new_context.writes = nwrites + (id -> (nwrites.getOrElse(id, Long.MaxValue) min old.version))
+            new_context.writes = new_context.writes + id
           }
 
           val result = message.eff
 
+          new_context.previousContext = previous
+
           if (message.pst) {
-            
+            previousContext = previous
+
             stateMap = new_context.stateMap
             reads = new_context.reads
             writes = new_context.writes
             sends = (sends :+ Send(level, VId(new_context(id).version, id), message)) ++ new_context.sends
-            
+
             result
           }
-          else {
-            failure_ = PostFailed(vid, id.obj(this), message)
-            throw FailureException(failure_)
-          }
+          else throw FailureException(PostFailed(vid, id.obj(this), message))
         }
-        else {
-          failure_ = PreFailed(vid, id.obj(this), message)
-          throw FailureException(failure_)
-        }
+        else throw FailureException(PreFailed(vid, id.obj(this), message))
       }
       catch {
         case e: Throwable => {
-          
+          e match {
+            case FailureException(f) => failure_ = f
+            case _ => failure_ = ExceptionFailure(e)
+          }
+
+          previousContext = previous
           reads = new_context.reads
           writes = new_context.writes
-
-          if (failure_ == null) failure_ = ExceptionFailure(e, new_context.reads ++ new_context.writes)
+          sends = (sends :+ Send(level, VId(new_context(id).version, id), message)) ++ new_context.sends
+          
           throw e
         }
       }
@@ -124,7 +130,7 @@ object DefaultContext {
   }
 
   trait Store {
-    def update(s: Map[Id[_], VObject[_]]): Map[Id[_], VObject[_]]
+    def update(state: Map[Id[_], VObject[_]]): Map[Id[_], VObject[_]]
     def commit(reads: Map[Id[_], Long], writes: Map[Id[_], Long], sends: Vector[STYPE]): Option[CommitFailure]
   }
 }

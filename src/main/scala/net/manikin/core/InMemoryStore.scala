@@ -1,6 +1,5 @@
 package net.manikin.core
 
-
 object InMemoryStore {
   import net.manikin.core.DefaultContext._
   import net.manikin.core.TransactionalObject._
@@ -8,8 +7,8 @@ object InMemoryStore {
   class InMemoryStore extends Store {
     var events: Map[Id[_], Map[Long, STYPE]] = Map()
     
-    def update(s: Map[Id[_], VObject[_]]): Map[Id[_], VObject[_]] = {
-      s.map { x =>
+    def update(state: Map[Id[_], VObject[_]]): Map[Id[_], VObject[_]] = {
+      state.map { x =>
         val id = x._1
         var v_obj = x._2
 
