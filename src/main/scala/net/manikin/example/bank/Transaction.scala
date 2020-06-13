@@ -1,29 +1,27 @@
 package net.manikin.example.bank
 
-object Transaction {
+object  Transaction {
   import net.manikin.core.StateMachineObject._
   import Account._
-  
-  case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
-  case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Msg extends StateMessage[Data, Id, Unit]
+  case class TransactionId  (id: Long) extends StateId[TransactionData] { def initData = TransactionData() }
+  case class TransactionData(from: Account.AccountId = null, to: Account.AccountId = null, amount: Double = 0.0)
 
-  case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
-    def nst =   { case "Initial" => "Created" }
-    def pre =   from().state == "Opened" && to().state == "Opened"
-    def apl =   data() = data().copy(from = from, to = to, amount = amount)
-    def pst =   data().from == from && data().to == to && data().amount == amount
+  trait Msg[+R] extends StateMessage[TransactionData, TransactionId, R]
+
+  case class Create(from: Account.AccountId, to: Account.AccountId, amount: Double) extends Msg[Unit] {
+    def nst = { case "Initial" => "Created" }
+    def pre = { amount > 0 && from != to }
+    def apl = { data.copy(from = from, to = to, amount = amount) }
+    def eff = { }
+    def pst = { data.from == from && data.to == to && data.amount == amount }
   }
 
-  case class Commit() extends Msg {
-    def amt =   data().amount
-    def from =  data().from
-    def to =    data().to
-
-    def nst =   { case "Created" => "Committed" }
-    def pre =   true
-    def apl =   { data().from <~ Withdraw(amt) ; to <~ Deposit(amt) }
-    def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
-  }        
+  case class Commit() extends Msg[Unit] {
+    def nst = { case "Created" => "Committed" }
+    def pre = { true }
+    def apl = { data }
+    def eff = { data.from ! Withdraw(data.amount) ; data.to ! Deposit(data.amount)  }
+    def pst = { data.from.old_data.balance + data.to.old_data.balance == data.from.data.balance + data.to.data.balance }
+  }
 }

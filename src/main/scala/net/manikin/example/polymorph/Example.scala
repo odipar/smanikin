@@ -1,62 +1,67 @@
 package net.manikin.example.polymorph
 
+
 object Example {
 
   import net.manikin.core.TransactionalObject._
-  import net.manikin.core.TransactionContext.TransactionContext
+  import net.manikin.core.StateMachineObject._
+  import net.manikin.core.DefaultContext.DefaultContext
 
-  trait Base {
+  trait Base extends Serializable {
     def item: String
     def setItem(item: String): Base
   }
 
-  trait BId extends Id[Base] {
+  trait BId extends StateId[Base] {
     // polymorphic select of Message
-    def setItemMessage(item: String): BaseMessage[Unit] = SetItem(item)
-    def setItem(item: String)(implicit c: Context): Unit = this <~ setItemMessage(item)
+    def setItem(item: String)(implicit c: Context): Unit = this ! SetItem(item)
   }
 
-  trait BaseMessage[+R] extends Message[Base, BId, R]
+  trait BaseMessage[+R] extends StateMessage[Base, BId, R] {
+    def nst =   { case x => x }
+  }
 
   case class SetItem(item: String) extends BaseMessage[Unit] {
-    def pre = !item.contains("$")
-    def app = self() = self().setItem(item)
-    def pst = true
+    def pre =   { !item.contains("$") }
+    def apl =   { data.setItem(item) }
+    def eff =   { }
+    def pst =   { true }
   }
 
   case class Extend1(member1: String = "", item: String = "") extends Base {
-    def setItem(item: String) = this.copy(item = item)
+    def setItem(item: String): Base = this.copy(item = item)
+  }
+  case class Extend2(var member2: String = "", item: String = "") extends Base {
+    def setItem(item: String): Base = this.copy(item = item)
   }
 
-  case class Extend2(member2: String = "", item: String = "") extends Base {
-    def setItem(item: String) = this.copy(item = item)
-  }
-  
   trait SetItemExtend extends BaseMessage[Unit] {
     def item: String
-    def app = self <~ SetItem(item)
-    def pst = true
+
+    def apl =   { data }
+    def eff =   { self ! SetItem(item) }
+    def pst =   { true }
   }
 
   case class SetItemExtend1(item: String) extends SetItemExtend {
-    def pre = !item.contains("~")
+    def pre =   { !item.contains("~") }
   }
 
   case class SetItemExtend2(item: String) extends SetItemExtend {
-    def pre = !item.contains("&")
+    def pre =   { !item.contains("&") }
   }
 
   case class EId1(id: Long) extends BId {
-    def init = Extend1()
+    def initData = Extend1()
   }
 
   case class EId2(id: Long) extends BId {
-    def init = Extend2()
-    override def setItemMessage(item: String) = SetItemExtend2(item)
+    def initData = Extend2()
+    override def setItem(item: String)(implicit c: Context): Unit = this ! SetItemExtend2(item)
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val c: Context = new TransactionContext()
+    implicit val c: Context = new DefaultContext()
 
     val e1: BId = EId1(1)
     val e2: BId = EId2(1)

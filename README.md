@@ -19,11 +19,11 @@ Here is a simple Bank transaction example:
 ```scala
 object Main {
   import net.manikin.core.TransactionalObject._
-  import net.manikin.core.TransactionContext._
+  import net.manikin.core.DefaultContext._
   import IBAN._
 
   def main(args: Array[String]): Unit = {
-    implicit val c: Context = new TransactionContext()
+    implicit val c: Context = new DefaultContext()
 
     val a1 = Account.Id(iban = IBAN("A1"))
     val a2 = Account.Id(iban = IBAN("A2"))
@@ -53,28 +53,28 @@ object Account {
   case class Data(balance: Double = 0.0)
 
   trait Msg extends StateMessage[Data, Id, Unit] {
-    def balance =       data().balance
-    def prev_balance =  data.prev.balance
+    def balance =       dataId().balance
+    def prev_balance =  dataId.prev.balance
   }
 
   case class Open(initial: Double) extends Msg {
     def nst =   { case "Initial" => "Opened" }
     def pre =   initial > 0
-    def apl =   data() = data().copy(balance = initial)
+    def apl =   dataId() = dataId().copy(balance = initial)
     def pst =   balance == initial
   }
 
   case class Withdraw(amount: Double) extends Msg {
     def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0.0 && balance > amount
-    def apl =   data() = data().copy(balance = balance - amount)
+    def apl =   dataId() = dataId().copy(balance = balance - amount)
     def pst =   balance == prev_balance - amount
   }
 
   case class Deposit(amount: Double) extends Msg {
     def nst =   { case "Opened" => "Opened" }
     def pre =   amount > 0
-    def apl =   data() = data().copy(balance = balance + amount)
+    def apl =   dataId() = dataId().copy(balance = balance + amount)
     def pst =   balance == prev_balance + amount
   }
 }
@@ -92,18 +92,18 @@ object Transaction {
   case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
     def nst =   { case "Initial" => "Created" }
     def pre =   from().state == "Opened" && to().state == "Opened"
-    def apl =   data() = data().copy(from = from, to = to, amount = amount)
-    def pst =   data().from == from && data().to == to && data().amount == amount
+    def apl =   dataId() = dataId().copy(from = from, to = to, amount = amount)
+    def pst =   dataId().from == from && dataId().to == to && dataId().amount == amount
   }
 
   case class Commit() extends Msg {
-    def amt =   data().amount
-    def from =  data().from
-    def to =    data().to
+    def amt =   dataId().amount
+    def from =  dataId().from
+    def to =    dataId().to
 
     def nst =   { case "Created" => "Committed" }
     def pre =   true
-    def apl =   { data().from <~ Withdraw(amt) ; to <~ Deposit(amt) }
+    def apl =   { dataId().from <~ Withdraw(amt) ; to <~ Deposit(amt) }
     def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
   }        
 }

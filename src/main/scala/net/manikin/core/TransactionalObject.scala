@@ -4,47 +4,76 @@ object TransactionalObject {
 
   import scala.language.implicitConversions
 
-  trait Id[+X] {
-    def init: X
+  // An Id that identifies an Object O
+  trait Id[+O] {
+    def init: O
 
-    def prev(implicit ctx: Context): X = ctx.previous(this)
-    def apply()(implicit ctx: Context): X = ctx(this)
+    def obj(implicit ctx: Context): O = ctx(this).obj
+    def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
   }
 
-  implicit class IdSyntax[X](id: Id[X]) {
-    def <~[I <: Id[X], R](msg: Message[X, I, R])(implicit ctx: Context): R = ctx.send(id.asInstanceOf[I], msg)
-    def update(x: X)(implicit ctx: Context): Unit = ctx.set(id, x)
-  }
-  
-  trait Message[+X, I <: Id[X], +R] {
+  /*
+   * A Message can be sent to an Object O with address Id, returning R
+   *
+   * There are four stages:
+   *
+   * 1) (pre)pre-condition: predicate over anything. MUST BE a pure function (no side effects)
+   * 2) (app)application: returns a new version of an Object. MUST BE a pure function (used for Event sourcing)
+   * 3) (eff)effects: can do anything, but should return R
+   * 4) (pst)post-condition: predicate over anything, including previous states. MUST BE a pure function
+  */
 
-    // context and self will be injected
-    var contextVar: Context = _
-    var selfVar: I = _
+  trait Message[+O, +I <: Id[O], +R] {
+    // context and this will be injected
+    var contextVar: Context = null
+    var thisVar: Id[_] = null // vars cannot be covariant, so hack it
 
     implicit def context: Context = contextVar
-    def self: I = selfVar
+    def self: I = thisVar.asInstanceOf[I]
 
     def pre: Boolean
-    def app: R
+    def app: O
+    def eff: R
     def pst: Boolean
   }
-  
+
+  /*
+   * A Context acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
+   * In order to send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
+   * An Context implementation is optionally responsible for Transactional guarantees when a Message is committed
+   */
   trait Context {
-    def apply[X](id: Id[X]): X
-    def set[X](id: Id[X], x: X): Unit
-    def send[X, I <: Id[X], R](id: I, message: Message[X, I, R]): R
+    def apply[O](id: Id[O]): VObject[O]
+    def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R
 
     def withFailure(f: Failure): Unit
+    def failure: Failure
+
     def previous: Context
   }
-  
+
+  // Objects are versioned by Contexts
+  case class VObject[+O](version: Long, obj: O)
+
+  // Things can go wrong and that's encapsulated as type of Failure, not an Exception
   trait Failure
 
   case class FailureException(f: Failure) extends Exception {
     override def toString = "FailureException(" + f + ")"
   }
-  case class ExceptionFailure(t: Throwable) extends Failure {
+  case class ExceptionFailure(t: Throwable, snapshot: Map[Id[_], Long] = Map()) extends Failure {
     override def toString = "ExceptionFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
+  }
+
+  implicit class IdSyntax[O](id: Id[O]) {
+    def ![I <: Id[O], R](msg: Message[O, I, R])(implicit ctx: Context): R = ctx.send(id, msg)
+  }
+
+  case class EId() extends Id[Unit] { def init: Unit = { } }
+
+  trait Effect extends Message[Unit, EId, Unit] {
+    def pre = true
+    def app = { }
+    def pst = true
   }
 }
