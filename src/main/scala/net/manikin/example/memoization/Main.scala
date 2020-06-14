@@ -22,8 +22,8 @@ object Main {
     def eff = state match {
       case "Memorized" => { println("memorized: " + self) ; data }
       case _ => self ! Memorize {
-        if (arg > 1) arg * (Factorial(arg - 1) ! Calculate())
-        else arg
+        if (arg < 2) arg
+        else arg * (Factorial(arg - 1) ! Calculate())
       }
     }
     def pst = (arg > 1) implies data == (self.arg * Factorial(self.arg - 1).data)
