@@ -1,7 +1,6 @@
 package net.manikin.example.polymorph
 
-
-object Example {
+object Main {
 
   import net.manikin.core.TransactionalObject._
   import net.manikin.core.StateMachineObject._

@@ -54,7 +54,7 @@ object DefaultContext {
 
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {
       val old = stateMap.getOrElse(id, VObject(0, id.init))
-      val vid = VId(old.version, id)
+      val vid_old = VId(old.version, id)
 
       val new_context = copyThis()
       val previous = copyThis()
@@ -91,9 +91,9 @@ object DefaultContext {
 
             result
           }
-          else throw FailureException(PostFailed(vid, id.obj(this), message))
+          else throw FailureException(PostFailed(vid_old, id.obj(new_context), message))
         }
-        else throw FailureException(PreFailed(vid, id.obj(this), message))
+        else throw FailureException(PreFailed(vid_old, id.obj(new_context), message))
       }
       catch {
         case e: Throwable => {

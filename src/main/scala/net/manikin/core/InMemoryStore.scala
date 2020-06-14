@@ -15,6 +15,7 @@ object InMemoryStore {
         var version = v_obj.version + 1
         val evt = events.getOrElse(id, Map())
 
+        // replay
         while(evt.contains(version)) {
           val msg = evt(version).message
 
@@ -42,9 +43,7 @@ object InMemoryStore {
         if (writes.nonEmpty) {
           // if there are writes, check snapshot of both reads and writes (Serializability)
           (reads ++ writes).foreach {
-            r => {
-              if (events.getOrElse(r._1, empty).contains(r._2 + 1)) return Some(SnapshotFailure(reads ++ writes))
-            }
+            r => if (events.getOrElse(r._1, empty).contains(r._2 + 1)) return Some(SnapshotFailure(reads ++ writes))
           }
         }
 

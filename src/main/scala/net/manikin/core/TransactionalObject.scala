@@ -69,6 +69,10 @@ object TransactionalObject {
     def ![I <: Id[O], R](msg: Message[O, I, R])(implicit ctx: Context): R = ctx.send(id, msg)
   }
 
+  implicit def extendedBoolean(a: Boolean) = new {
+    def implies(b: => Boolean) = !a || b
+  }
+  
   case class EId() extends Id[Unit] { def init: Unit = { } }
 
   trait Effect extends Message[Unit, EId, Unit] {
