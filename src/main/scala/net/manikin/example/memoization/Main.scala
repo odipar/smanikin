@@ -26,7 +26,10 @@ object Main {
         else arg * (Factorial(arg - 1) ! Calculate())
       }
     }
-    def pst = (arg > 1) implies data == (arg * Factorial(arg - 1).data)
+    def pst = {
+      if (arg < 2) data == arg
+      else data == (arg * Factorial(arg - 1).data)
+    }
   }
 
   case class Memorize(result: Long) extends FactorialMsg {
