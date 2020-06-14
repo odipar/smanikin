@@ -17,7 +17,7 @@ object Main {
   
   case class Calculate() extends FactorialMsg {
     def nst = { case x => x }
-    def pre = self.arg >= 0
+    def pre = arg > 0
     def apl = data
     def eff = state match {
       case "Memorized" => { println("memorized: " + self) ; data }
@@ -26,7 +26,7 @@ object Main {
         else arg * (Factorial(arg - 1) ! Calculate())
       }
     }
-    def pst = (arg > 1) implies data == (self.arg * Factorial(self.arg - 1).data)
+    def pst = (arg > 1) implies data == (arg * Factorial(arg - 1).data)
   }
 
   case class Memorize(result: Long) extends FactorialMsg {
