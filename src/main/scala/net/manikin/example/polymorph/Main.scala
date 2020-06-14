@@ -1,9 +1,8 @@
 package net.manikin.example.polymorph
 
 object Main {
-
-  import net.manikin.core.TransactionalObject._
-  import net.manikin.core.StateMachineObject._
+  import net.manikin.core.TransObject._
+  import net.manikin.core.StateObject._
   import net.manikin.core.DefaultContext.DefaultContext
 
   trait Base extends Serializable {
@@ -17,14 +16,14 @@ object Main {
   }
 
   trait BaseMessage[+R] extends StateMessage[Base, BId, R] {
-    def nst =   { case x => x }
+    def nst = { case x => x }
   }
 
   case class SetItem(item: String) extends BaseMessage[Unit] {
-    def pre =   { !item.contains("$") }
-    def apl =   { data.setItem(item) }
-    def eff =   { }
-    def pst =   { true }
+    def pre = !item.contains("$")
+    def apl = data.setItem(item)
+    def eff = { }
+    def pst = true
   }
 
   case class Extend1(member1: String = "", item: String = "") extends Base {
@@ -37,17 +36,17 @@ object Main {
   trait SetItemExtend extends BaseMessage[Unit] {
     def item: String
 
-    def apl =   { data }
-    def eff =   { self ! SetItem(item) }
-    def pst =   { true }
+    def apl = data
+    def eff = self ! SetItem(item)
+    def pst = true
   }
 
   case class SetItemExtend1(item: String) extends SetItemExtend {
-    def pre =   { !item.contains("~") }
+    def pre = !item.contains("~")
   }
 
   case class SetItemExtend2(item: String) extends SetItemExtend {
-    def pre =   { !item.contains("&") }
+    def pre = !item.contains("&")
   }
 
   case class EId1(id: Long) extends BId {
@@ -60,7 +59,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val c: Context = new DefaultContext()
+    implicit val c = DefaultContext()
 
     val e1: BId = EId1(1)
     val e2: BId = EId2(1)

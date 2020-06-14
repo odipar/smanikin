@@ -1,65 +1,70 @@
 package net.manikin.core
 
+import net.manikin.core.InMemoryStore.InMemoryStore
+
 object DefaultContext {
-  import TransactionalObject._
+  import TransObject._
 
   // A DefaultContext keeps track of (historical) Object states and Message dispatches
-  class DefaultContext() extends Context with Cloneable {
-    private var failure_ : Failure = null
-    private var level = 0
-    private var previousContext: DefaultContext = null
-    var stateMap: Map[Id[_], VObject[_]] = Map()
-    var reads: Set[Id[_]] = Set()
-    var writes: Set[Id[_]] = Set()
-    var sends: Vector[STYPE] = Vector()
-
-    private def substate(ids: Set[Id[_]]): Map[Id[_], VObject[_]] = {
-      ids.map(id => (id, stateMap.getOrElse(id, VObject(0, id.init)))).toMap
-    }
-
-    private def versions(ids: Set[Id[_]]): Map[Id[_], Long] = {
-      substate(ids).map(x => (x._1, x._2.version))
-    }
+  case class DefaultContext(private val store: Store = new InMemoryStore()) extends Context with Cloneable {
+    type ID = Id[_]
+    type MV = Map[ID, Long]
+    type ST = Map[ID, VObject[_]]
     
-    def snapshot: Map[Id[_], VObject[_]] = substate(reads ++ writes)
-    def previous: Context = previousContext
-    def previousDefaultContext: DefaultContext = previousContext
+    private var level = 0
+    private var failure_ : Failure = _
+    private var previous_ : DefaultContext = _
+    private var state: ST = Map()
+    private var reads: MV = Map()
+    private var writes: MV = Map()
+    private var sends: Vector[STYPE] = Vector()
 
-    def withFailure(f: Failure): Unit = failure_ = f
+    def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
+    def update(ctx: DefaultContext): Unit = state = state ++ store.update(substate((ctx.reads ++ ctx.writes).keySet))
+
+    private def substate(ids: Set[ID]): ST = ids.map(id => (id, get(id))).toMap
+    private def hit(m: MV, id: ID, v: Long): MV = m + (id -> (m.getOrElse(id, Long.MaxValue) min v))
+
+    def previous: Context = previous_
     def failure: Failure = failure_
-    def update(updates: Map[Id[_], VObject[_]]): Unit = stateMap = stateMap ++ updates
 
-    def commit(s: Store): Option[CommitFailure] = {
-      val result = s.commit(versions(reads), versions(writes), sends)
+    def commit(): Option[CommitFailure] = {
+      val result = store.commit(reads, writes, sends)
 
       if (result.isEmpty) {
-        val prev = this.clone.asInstanceOf[DefaultContext]
-        reads = Set()
-        writes = Set()
+        previous_ = this.clone.asInstanceOf[DefaultContext]
+        reads = Map()
+        writes = Map()
         sends = Vector()
         failure_ = null
-        previousContext = prev
       }
 
       result
     }
 
+    private def get[O](id: Id[O]): VObject[O] = {
+      // not a pure get, side-effects state
+      if (state.contains(id)) state(id).asInstanceOf[VObject[O]]
+      else {
+        state = state ++ store.update(Map(id -> VObject(0, id.init)))
+        get(id)
+      }
+    }
+    
     def apply[O](id: Id[O]): VObject[O] = {
-      val vobj = stateMap.getOrElse(id, VObject(0, id.init))
-      reads = reads + id
-      vobj.asInstanceOf[VObject[O]]
+      val vobj = get(id)
+      reads = hit(reads, id, vobj.version)
+      vobj
     }
 
-    def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
-
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {
-      val old = stateMap.getOrElse(id, VObject(0, id.init))
+      val old = get(id)
       val vid_old = VId(old.version, id)
 
       val new_context = copyThis()
       val previous = copyThis()
-      
-      new_context.previousContext = this
+
+      new_context.previous_ = null
       new_context.level = level + 1
       new_context.sends = Vector()
 
@@ -73,21 +78,22 @@ object DefaultContext {
           val new_self = message.app
 
           if (new_self != old.obj) {
-            new_context.stateMap = new_context.stateMap + (id -> VObject(old.version + 1, new_self))
-            new_context.writes = new_context.writes + id
+            new_context.state = new_context.state + (id -> VObject(old.version + 1, new_self))
+            new_context.writes = hit(new_context.writes, id, old.version)
           }
 
           val result = message.eff
 
-          new_context.previousContext = previous
+          // inject previous context for post condition
+          new_context.previous_ = previous
 
           if (message.pst) {
-            previousContext = previous
 
-            stateMap = new_context.stateMap
+            state = new_context.state
             reads = new_context.reads
             writes = new_context.writes
             sends = (sends :+ Send(level, VId(new_context(id).version, id), message)) ++ new_context.sends
+            previous_ = previous
 
             result
           }
@@ -102,11 +108,11 @@ object DefaultContext {
             case _ => failure_ = ExceptionFailure(e)
           }
 
-          previousContext = previous
           reads = new_context.reads
           writes = new_context.writes
           sends = (sends :+ Send(level, VId(new_context(id).version, id), message)) ++ new_context.sends
-          
+          previous_ = previous
+
           throw e
         }
       }

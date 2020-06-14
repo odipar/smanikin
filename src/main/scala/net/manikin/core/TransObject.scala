@@ -1,6 +1,6 @@
 package net.manikin.core
 
-object TransactionalObject {
+object TransObject {
 
   import scala.language.implicitConversions
 
@@ -46,9 +46,7 @@ object TransactionalObject {
     def apply[O](id: Id[O]): VObject[O]
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R
 
-    def withFailure(f: Failure): Unit
     def failure: Failure
-
     def previous: Context
   }
 
@@ -73,9 +71,9 @@ object TransactionalObject {
     def implies(b: => Boolean) = !a || b
   }
   
-  case class EId() extends Id[Unit] { def init: Unit = { } }
+  case class TId() extends Id[Unit] { def init: Unit = { } }
 
-  trait Effect extends Message[Unit, EId, Unit] {
+  trait Transaction extends Message[Unit, TId, Unit] {
     def pre = true
     def app = { }
     def pst = true

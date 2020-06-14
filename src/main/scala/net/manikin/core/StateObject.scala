@@ -1,7 +1,7 @@
 package net.manikin.core
 
-object StateMachineObject {
-  import net.manikin.core.TransactionalObject._
+object StateObject {
+  import net.manikin.core.TransObject._
 
   // A StateObject is a special kind of Object that is the product of Data and a simple abstract state.
   case class StateObject[+O](data: O, state: String)
@@ -33,7 +33,6 @@ object StateMachineObject {
       if (nst.isDefinedAt(st)) self.obj.copy(data = apl, state = nst(self.obj.state))
       else {
         val f = NextStateException(self, self.obj, this)
-        context.withFailure(f)
         throw FailureException(f)
       }
     }

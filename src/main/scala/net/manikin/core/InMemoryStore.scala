@@ -2,7 +2,7 @@ package net.manikin.core
 
 object InMemoryStore {
   import net.manikin.core.DefaultContext._
-  import net.manikin.core.TransactionalObject._
+  import net.manikin.core.TransObject._
 
   class InMemoryStore extends Store {
     var events: Map[Id[_], Map[Long, STYPE]] = Map()
