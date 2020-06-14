@@ -1,38 +1,40 @@
 package net.manikin.example.memoization
 
-import net.manikin.core.InMemoryStore.InMemoryStore
-import net.manikin.core.Transactor.Transactor
-
 object Main {
-  import net.manikin.core.DefaultContext._
+  import net.manikin.core.InMemoryStore._
   import net.manikin.core.TransObject._
+  import net.manikin.core.Transactor._
+  import net.manikin.core.DefaultContext._
+  import net.manikin.core.StateObject._
 
-  case class Factorial(arg: Long) extends Id[Option[Long]] {
-    def init = None
+  case class Factorial(arg: Long) extends StateId[Long] {
+    def initData = -1
   }
 
-  trait FactorialMsg extends Message[Option[Long], Factorial, Long] {
+  trait FactorialMsg extends StateMessage[Long, Factorial, Long] {
     def arg = self.arg
   }
   
   case class Calculate() extends FactorialMsg {
+    def nst = { case x => x }
     def pre = self.arg >= 0
-    def app = self.obj
-    def eff = self.obj match {
-      case Some(x) => { println(s"memoized + $self") ; x }
-      case None => self ! Memorize {
+    def apl = data
+    def eff = state match {
+      case "Memorized" => { println("memorized: " + self) ; data }
+      case _ => self ! Memorize {
         if (arg > 1) arg * (Factorial(arg - 1) ! Calculate())
         else arg
       }
     }
-    def pst = (arg > 1) implies self.obj.get == (self.arg * Factorial(self.arg - 1).obj.get)
+    def pst = (arg > 1) implies data == (self.arg * Factorial(self.arg - 1).data)
   }
 
   case class Memorize(result: Long) extends FactorialMsg {
-    def pre = self.obj.isEmpty
-    def app = Some(result)
-    def eff = self.obj.get
-    def pst = self.obj.nonEmpty
+    def nst = { case _ => "Memorized" }
+    def pre = true
+    def apl = result
+    def eff = data
+    def pst = true
   }
 
   def main(args: Array[String]): Unit = {
