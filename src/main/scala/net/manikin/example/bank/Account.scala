@@ -11,25 +11,25 @@ object Account {
 
   case class Open(initial: Double) extends Msg {
     def nst = { case "Initial" => "Opened" }
-    def pre = { initial > 0 }
-    def apl = { data.copy(balance = initial) }
+    def pre = initial > 0
+    def apl = data.copy(balance = initial)
     def eff = { }
-    def pst = { data.balance == initial }
+    def pst = data.balance == initial
   }
 
   case class Withdraw(amount: Double) extends Msg {
     def nst = { case "Opened" => "Opened" }
-    def pre = { amount > 0 && data.balance > amount }
-    def apl = { data.copy(balance = data.balance - amount) }
+    def pre = amount > 0 && data.balance > amount
+    def apl = data.copy(balance = data.balance - amount)
     def eff = { }
-    def pst = { data.balance == old_data.balance - amount }
+    def pst = data.balance == old_data.balance - amount
   }
 
   case class Deposit(amount: Double) extends Msg {
     def nst = { case "Opened" => "Opened" }
-    def pre = { amount > 0 }
-    def apl = { data.copy(balance = data.balance + amount)  }
+    def pre = amount > 0
+    def apl = data.copy(balance = data.balance + amount)
     def eff = { }
-    def pst = { data.balance == old_data.balance + amount }
+    def pst = data.balance == old_data.balance + amount
   }
 }

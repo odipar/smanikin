@@ -28,26 +28,26 @@ object Account {
 
   case class Open(initial: Double) extends Msg {
     def nst = { case "Initial" => "Opened" }
-    def pre = { initial > 0 }
-    def apl = { data.copy(balance = initial) }
+    def pre = initial > 0
+    def apl = data.copy(balance = initial)
     def eff = { }
-    def pst = { data.balance == initial }
+    def pst = data.balance == initial
   }
 
   case class Withdraw(amount: Double) extends Msg {
     def nst = { case "Opened" => "Opened" }
-    def pre = { amount > 0 && data.balance > amount }
-    def apl = { data.copy(balance = data.balance - amount) }
+    def pre = amount > 0 && data.balance > amount
+    def apl = data.copy(balance = data.balance - amount)
     def eff = { }
-    def pst = { data.balance == old_data.balance - amount }
+    def pst = data.balance == old_data.balance - amount
   }
 
   case class Deposit(amount: Double) extends Msg {
     def nst = { case "Opened" => "Opened" }
-    def pre = { amount > 0 }
-    def apl = { data.copy(balance = data.balance + amount)  }
+    def pre = amount > 0
+    def apl = data.copy(balance = data.balance + amount)
     def eff = { }
-    def pst = { data.balance == old_data.balance + amount }
+    def pst = data.balance == old_data.balance + amount
   }
 }
 ```
@@ -67,18 +67,18 @@ object Transfer {
 
   case class Create(_from: Account.Id, _to: Account.Id, _amount: Double) extends Msg {
     def nst = { case "Initial" => "Created" }
-    def pre = { amount > 0 && from != to }
-    def apl = { data.copy(from = _from, to = _to, amount = _amount) }
+    def pre = _amount > 0 && _from != _to
+    def apl = data.copy(from = _from, to = _to, amount = _amount)
     def eff = { }
-    def pst = { from == _from && to == _to && amount == _amount }
+    def pst = from == _from && to == _to && amount == _amount
   }
 
   case class Book() extends Msg {
     def nst = { case "Created" => "Booked" }
-    def pre = { true }
-    def apl = { data }
-    def eff = { from ! Withdraw(data.amount) ; to ! Deposit(data.amount)  }
-    def pst = { from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance }
+    def pre = true
+    def apl = data
+    def eff = { from ! Withdraw(data.amount) ; to ! Deposit(data.amount) }
+    def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
   }
 }
 ```  
