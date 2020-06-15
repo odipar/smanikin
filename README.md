@@ -15,96 +15,122 @@ Next to that, Manikin can also be configured to run on top of multi-threaded, co
 A lot of Scala (implicit) trickery is used to reduce the amount of boilerplate to a minimum. 
 The goal of Manikin is to be able to specify Objects and Messages as succinctly as possible while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
 
-Here is a simple Bank transaction example:
-```scala
-object Main {
-  import net.manikin.core.TransObject._
-  import net.manikin.core.context.DefaultContext._
-  import IBAN._
-
-  def main(args: Array[String]): Unit = {
-    implicit val c: Context = new DefaultContext()
-
-    val a1 = Account.Id(iban = IBAN("A1"))
-    val a2 = Account.Id(iban = IBAN("A2"))
-    val t1 = Transaction.Id(id = 1)
-    val t2 = Transaction.Id(id = 2)
-
-    a1 <~ Account.Open(initial = 80.0)
-    a2 <~ Account.Open(initial = 120.0)
-    t1 <~ Transaction.Create(from = a1, to = a2, amount = 30.0)
-    t1 <~ Transaction.Commit()
-    t2 <~ Transaction.Create(from = a1, to = a2, amount = 20.0)
-    t2 <~ Transaction.Commit()
-
-    println("a1: " + c(a1)) // a1: State(Data(30.0),Opened)
-    println("a2: " + c(a2)) // a2: State(Data(170.0),Opened)
-    println("t1: " + c(t1)) // t1: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Committed)
-    println("t2: " + c(t2)) // t2: State(Data(Id(IBAN(A1)),Id(IBAN(A2)),20.0),Committed)
-  }
-}
-```
+Here is a simple Bank transfer example:
 ```scala
 object Account {
   import net.manikin.core.state.StateObject._
   import IBAN._
   
-  case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
-  case class Data(balance: Double = 0.0)
+  case class AccountId  (iban: IBAN) extends StateId[AccountData] { def initData = AccountData() }
+  case class AccountData(balance: Double = 0.0)
 
-  trait Msg extends StateMessage[Data, Id, Unit] {
-    def balance =       dataId().balance
-    def prev_balance =  dataId.prev.balance
+  trait AccountMessage[+R] extends StateMessage[AccountData, AccountId, R]
+
+  case class Open(initial: Double) extends AccountMessage[Unit] {
+    def nst = { case "Initial" => "Opened" }
+    def pre = { initial > 0 }
+    def apl = { data.copy(balance = initial) }
+    def eff = { }
+    def pst = { data.balance == initial }
   }
 
-  case class Open(initial: Double) extends Msg {
-    def nst =   { case "Initial" => "Opened" }
-    def pre =   initial > 0
-    def apl =   dataId() = dataId().copy(balance = initial)
-    def pst =   balance == initial
+  case class Withdraw(amount: Double) extends AccountMessage[Unit] {
+    def nst = { case "Opened" => "Opened" }
+    def pre = { amount > 0 && data.balance > amount }
+    def apl = { data.copy(balance = data.balance - amount) }
+    def eff = { }
+    def pst = { data.balance == old_data.balance - amount }
   }
 
-  case class Withdraw(amount: Double) extends Msg {
-    def nst =   { case "Opened" => "Opened" }
-    def pre =   amount > 0.0 && balance > amount
-    def apl =   dataId() = dataId().copy(balance = balance - amount)
-    def pst =   balance == prev_balance - amount
-  }
-
-  case class Deposit(amount: Double) extends Msg {
-    def nst =   { case "Opened" => "Opened" }
-    def pre =   amount > 0
-    def apl =   dataId() = dataId().copy(balance = balance + amount)
-    def pst =   balance == prev_balance + amount
+  case class Deposit(amount: Double) extends AccountMessage[Unit] {
+    def nst = { case "Opened" => "Opened" }
+    def pre = { amount > 0 }
+    def apl = { data.copy(balance = data.balance + amount)  }
+    def eff = { }
+    def pst = { data.balance == old_data.balance + amount }
   }
 }
 ```
 ```scala
-object Transaction {
+object  Transfer {
   import net.manikin.core.state.StateObject._
   import Account._
-  
-  case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
-  case class Data(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Msg extends StateMessage[Data, Id, Unit]
+  case class TransferId  (id: Long) extends StateId[TransferData] { def initData = TransferData() }
+  case class TransferData(from: Account.AccountId = null, to: Account.AccountId = null, amount: Double = 0.0)
 
-  case class Create(from: Account.Id, to: Account.Id, amount: Double) extends Msg {
-    def nst =   { case "Initial" => "Created" }
-    def pre =   from().state == "Opened" && to().state == "Opened"
-    def apl =   dataId() = dataId().copy(from = from, to = to, amount = amount)
-    def pst =   dataId().from == from && dataId().to == to && dataId().amount == amount
+  trait TransferMessage[+R] extends StateMessage[TransferData, TransferId, R]
+
+  case class Create(from: Account.AccountId, to: Account.AccountId, amount: Double) extends TransferMessage[Unit] {
+    def nst = { case "Initial" => "Created" }
+    def pre = { amount > 0 && from != to }
+    def apl = { data.copy(from = from, to = to, amount = amount) }
+    def eff = { }
+    def pst = { data.from == from && data.to == to && data.amount == amount }
   }
 
-  case class Commit() extends Msg {
-    def amt =   dataId().amount
-    def from =  dataId().from
-    def to =    dataId().to
-
-    def nst =   { case "Created" => "Committed" }
-    def pre =   true
-    def apl =   { dataId().from <~ Withdraw(amt) ; to <~ Deposit(amt) }
-    def pst =   from.prev.data.balance + to.prev.data.balance == from().data.balance + to().data.balance
-  }        
+  case class Book() extends TransferMessage[Unit] {
+    def nst = { case "Created" => "Booked" }
+    def pre = { true }
+    def apl = { data }
+    def eff = { data.from ! Withdraw(data.amount) ; data.to ! Deposit(data.amount)  }
+    def pst = { data.from.old_data.balance + data.to.old_data.balance == data.from.data.balance + data.to.data.balance }
+  }
 }
-``` 
+```  
+```scala
+object Main {
+  import net.manikin.core.TransObject._
+  import net.manikin.core.context.Transactor._
+  import net.manikin.core.context.DefaultContext._
+  import net.manikin.core.context.store.InMemoryStore._
+  
+  import Account._
+  import Transfer._
+  import IBAN._
+
+  def main(args: Array[String]): Unit = {
+    val store = new InMemoryStore() // The Transactors share the same backing Store
+    
+    val tx1 = Transactor(DefaultContext(store))
+    val tx2 = Transactor(DefaultContext(store))
+
+    val a1 = AccountId(iban = IBAN("A1"))
+    val a2 = AccountId(iban = IBAN("A2"))
+    val t1 = TransferId(id = 1)
+    val t2 = TransferId(id = 2)
+
+    case class T1() extends Transaction[Unit] {
+      def eff = {
+        a1 ! Open(initial = 80.0)
+        a2 ! Open(initial = 120.0)
+      }
+    }
+    
+    case class T2() extends Transaction[Unit] {
+      def eff = {
+        t1 ! Create(from = a1, to = a2, amount = 30.0)
+        t1 ! Book()
+      }
+    }
+
+    case class T3() extends Transaction[Unit] {
+      def eff = {
+        t2 ! Create(from = a1, to = a2, amount = 40.0)
+        t2 ! Book()
+      }
+    }
+
+    tx1.commit(TId(), T1())
+    tx1.commit(TId(), T2())
+    tx2.commit(TId(), T3())
+    
+    println("a1: " + tx2(a1).obj) // a1: StateObject(Data(10.0),Opened)
+    println("a2: " + tx2(a2).obj) // a2: StateObject(Data(190.0),Opened)
+    println("t1: " + tx2(t1).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Committed)
+    println("t2: " + tx2(t2).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Committed)
+
+
+  }
+}
+```
