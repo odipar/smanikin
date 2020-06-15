@@ -5,9 +5,10 @@ object InMemoryStore {
   import net.manikin.core.TransObject._
 
   class InMemoryStore extends Store {
-    var events: Map[Id[_], Map[Long, STYPE]] = Map()
-    
-    def update(state: Map[Id[_], VObject[_]]): Map[Id[_], VObject[_]] = {
+    var events: Map[ID, Map[Long, SEND]] = Map()
+
+    // 'Updates' the state to the most recent state
+    def update(state: ST): ST = {
       state.map { x =>
         val id = x._1
         var v_obj = x._2
@@ -32,19 +33,14 @@ object InMemoryStore {
       }
     }
 
-    val empty = Map[Long, STYPE]()
+    val empty = Map[Long, SEND]()
 
-    def commit(reads: Map[Id[_], Long], writes: Map[Id[_], Long], sends: Vector[STYPE]): Option[CommitFailure] = {
-      /*println("reads: " + reads)
-      println("writes: " + writes)
-      println("commit: " + sends) */
-
+    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[CommitFailure] = {
       this.synchronized { // atomic
-        if (writes.nonEmpty) {
-          // if there are writes, check snapshot of both reads and writes (Serializability)
-          (reads ++ writes).foreach {
-            r => if (events.getOrElse(r._1, empty).contains(r._2 + 1)) return Some(SnapshotFailure(reads ++ writes))
-          }
+        val rw = reads ++ writes
+        
+        rw.foreach {
+          r => if (events.getOrElse(r._1, empty).contains(r._2 + 1)) return Some(SnapshotFailure(rw))
         }
 
         sends.foreach { s =>
@@ -57,8 +53,8 @@ object InMemoryStore {
       }
     }
 
-    private case class ReplayContext(sid: Id[_], vobject: VObject[_]) extends Context {
-      def apply[O](id: Id[O]): VObject[O] = { if (sid == id) vobject.asInstanceOf[VObject[O]] ; else error }
+    private case class ReplayContext(sid: ID, obj: VObject[_]) extends Context {
+      def apply[O](id: Id[O]): VObject[O] = { if (sid == id) obj.asInstanceOf[VObject[O]] ; else error }
       def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = error
       def failure: Failure = null
       def previous: Context = error

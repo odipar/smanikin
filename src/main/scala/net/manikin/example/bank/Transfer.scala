@@ -1,27 +1,31 @@
 package net.manikin.example.bank
 
-object  Transfer {
+object Transfer {
   import net.manikin.core.state.StateObject._
   import Account._
 
-  case class TransferId  (id: Long) extends StateId[TransferData] { def initData = TransferData() }
-  case class TransferData(from: AccountId = null, to: AccountId = null, amount: Double = 0.0)
+  case class Id      (id: Long) extends StateId[Transfer] { def initData = Transfer() }
+  case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait TransferMessage[+R] extends StateMessage[TransferData, TransferId, R]
-
-  case class Create(from: AccountId, to: AccountId, amount: Double) extends TransferMessage[Unit] {
-    def nst = { case "Initial" => "Created" }
-    def pre = { amount > 0 && from != to }
-    def apl = { data.copy(from = from, to = to, amount = amount) }
-    def eff = { }
-    def pst = { data.from == from && data.to == to && data.amount == amount }
+  trait Msg extends StateMessage[Transfer, Id, Unit] {
+    def amount = data.amount
+    def from   = data.from
+    def to     = data.to
   }
 
-  case class Book() extends TransferMessage[Unit] {
+  case class Create(_from: Account.Id, _to: Account.Id, _amount: Double) extends Msg {
+    def nst = { case "Initial" => "Created" }
+    def pre = { amount > 0 && from != to }
+    def apl = { data.copy(from = _from, to = _to, amount = _amount) }
+    def eff = { }
+    def pst = { from == _from && to == _to && amount == _amount }
+  }
+
+  case class Book() extends Msg {
     def nst = { case "Created" => "Booked" }
     def pre = { true }
     def apl = { data }
-    def eff = { data.from ! Withdraw(data.amount) ; data.to ! Deposit(data.amount)  }
-    def pst = { data.from.old_data.balance + data.to.old_data.balance == data.from.data.balance + data.to.data.balance }
+    def eff = { from ! Withdraw(data.amount) ; to ! Deposit(data.amount)  }
+    def pst = { from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance }
   }
 }

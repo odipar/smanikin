@@ -1,26 +1,21 @@
 package net.manikin.core.context
 
-import net.manikin.core.TransObject
 
 object DefaultContext {
   import Store._
-  import TransObject._
+  import net.manikin.core.TransObject._
   import net.manikin.core.context.store.InMemoryStore._
   
   // A DefaultContext keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
   case class DefaultContext(private val store: Store = new InMemoryStore()) extends Context with Cloneable {
-    type ID = Id[_]
-    type MV = Map[ID, Long]
-    type ST = Map[ID, VObject[_]]
-    
     private var level = 0
     private var failure_ : Failure = _
     private var previous_ : DefaultContext = _
     var state: ST = Map()
     var reads: MV = Map()
     var writes: MV = Map()
-    var sends: Vector[STYPE] = Vector()
+    var sends: Vector[SEND] = Vector()
 
     def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
     def update(ctx: DefaultContext): Unit = state = state ++ store.update(substate((ctx.reads ++ ctx.writes).keySet))
@@ -63,8 +58,8 @@ object DefaultContext {
       val old = get(id)
       val vid_old = VId(old.version, id)
 
-      val new_context = copyThis()
       val previous = copyThis()
+      val new_context = copyThis()
 
       new_context.previous_ = null
       new_context.level = level + 1
@@ -123,11 +118,7 @@ object DefaultContext {
       }
     }
   }
-
-  case class ReadSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
-  case class WriteSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
-  case class FailureSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
-
+  
   case class PreFailed[+O, I <: Id[O], +R](id: VId[O], state: O, message: Message[O, I, R]) extends Failure
   case class PostFailed[+O, I <: Id[O], +R](id: VId[O], state: O, message: Message[O, I, R]) extends Failure
 }

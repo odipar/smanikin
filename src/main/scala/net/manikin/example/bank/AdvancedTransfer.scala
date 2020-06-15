@@ -18,10 +18,10 @@ object AdvancedTransfer {
     val tx2 = Transactor(DefaultContext(store))
 
     // Set up identifiers
-    val a1 = AccountId(iban = IBAN("A1"))
-    val a2 = AccountId(iban = IBAN("A2"))
-    val t1 = TransferId(id = 1)
-    val t2 = TransferId(id = 2)
+    val a1 = Id(iban = IBAN("A1"))
+    val a2 = Id(iban = IBAN("A2"))
+    val t1 = Id(id = 1)
+    val t2 = Id(id = 2)
 
     // Transactions are Messages that have multiple effects
     case class T1() extends Transaction[Unit] {

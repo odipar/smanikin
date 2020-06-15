@@ -3,6 +3,7 @@ package net.manikin.core.context
 object Transactor {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.DefaultContext._
+  import java.util.UUID
 
   // A Transactor commits to a DefaultContext. Upon failure it retries.
   case class Transactor(private var ctx: DefaultContext = DefaultContext()) {
@@ -25,5 +26,13 @@ object Transactor {
         }
       }
     }
-  }  
+  }
+
+  case class TId(uuid: UUID = UUID.randomUUID()) extends Id[Unit] { def init: Unit = { } }
+
+  trait Transaction[+R] extends Message[Unit, TId, R] {
+    def pre = true
+    def app = { }
+    def pst = true
+  }
 }

@@ -3,13 +3,16 @@ package net.manikin.core.context
 object Store {
   import net.manikin.core.TransObject._
 
+  type ID = Id[_]
+  type ST = Map[ID, VObject[_]]
+  type MV = Map[ID, Long]
+
   trait Store {
-    def update(state: Map[Id[_], VObject[_]]): Map[Id[_], VObject[_]]
-    def commit(reads: Map[Id[_], Long], writes: Map[Id[_], Long], sends: Vector[STYPE]): Option[CommitFailure]
+    def update(state: ST): ST
+    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[CommitFailure]
   }
-  
-  case class VId[+O](version: Long, id: Id[O])
-  type STYPE = Send[Any, _ <: Id[Any] , Any]
+
+  type SEND = Send[Any, _ <: Id[Any] , Any]
 
   trait Send[+O, I <: Id[O], +R] {
     def level: Int
@@ -17,9 +20,15 @@ object Store {
     def message: Message[O, I, R]
   }
 
+  case class ReadSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
+  case class WriteSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
+  case class FailureSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
+
+  case class VId[+O](version: Long, id: Id[O])
+
   trait CommitFailure
   case class StoreFailure() extends CommitFailure
-  case class SnapshotFailure(snapshot: Map[Id[_], Long]) extends CommitFailure
+  case class SnapshotFailure(snapshot: MV) extends CommitFailure
   
   case class CommitFailureException(f: CommitFailure) extends Exception {
     override def toString = "CommitFailureException(" + f + ")"

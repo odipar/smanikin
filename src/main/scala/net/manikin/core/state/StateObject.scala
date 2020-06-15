@@ -3,7 +3,7 @@ package net.manikin.core.state
 object StateObject {
   import net.manikin.core.TransObject._
 
-  // A StateObject is a special kind of Object that is the product of Data and a simple abstract state.
+  // A StateObject is a special kind of Object that is the product of a data Object and a simple abstract state.
   case class StateObject[+O](data: O, state: String)
 
   // A StateId identifies a StateObject
@@ -30,11 +30,8 @@ object StateObject {
     def app = {
       val st = self.obj.state
 
-      if (nst.isDefinedAt(st)) self.obj.copy(data = apl, state = nst(self.obj.state))
-      else {
-        val f = NextStateException(self, self.obj, this)
-        throw FailureException(f)
-      }
+      if (nst.isDefinedAt(st)) self.obj.copy(data = apl, state = nst(st))
+      else throw FailureException(NextStateException(self, self.obj, this))
     }
     def apl: O
   }

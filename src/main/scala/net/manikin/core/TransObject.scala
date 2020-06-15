@@ -1,9 +1,8 @@
 package net.manikin.core
 
 object TransObject {
-  import java.util.UUID
   import scala.language.implicitConversions
-
+  
   // An Id that identifies an Object O
   trait Id[+O] {
     def init: O
@@ -66,13 +65,5 @@ object TransObject {
 
   implicit class IdSyntax[O](id: Id[O]) {
     def ![I <: Id[O], R](msg: Message[O, I, R])(implicit ctx: Context): R = ctx.send(id, msg)
-  }
-  
-  case class TId(uuid: UUID = UUID.randomUUID()) extends Id[Unit] { def init: Unit = { } }
-
-  trait Transaction[+R] extends Message[Unit, TId, R] {
-    def pre = true
-    def app = { }
-    def pst = true
   }
 }
