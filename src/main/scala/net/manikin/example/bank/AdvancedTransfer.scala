@@ -5,9 +5,7 @@ object AdvancedTransfer {
   import net.manikin.core.context.Transactor._
   import net.manikin.core.context.DefaultContext._
   import net.manikin.core.context.store.InMemoryStore._
-  
-  import Account._
-  import Transfer._
+
   import IBAN._
 
   def main(args: Array[String]): Unit = {
@@ -18,30 +16,30 @@ object AdvancedTransfer {
     val tx2 = Transactor(DefaultContext(store))
 
     // Set up identifiers
-    val a1 = Id(iban = IBAN("A1"))
-    val a2 = Id(iban = IBAN("A2"))
-    val t1 = Id(id = 1)
-    val t2 = Id(id = 2)
+    val a1 = Account.Id(iban = IBAN("A1"))
+    val a2 = Account.Id(iban = IBAN("A2"))
+    val t1 = Transfer.Id(id = 1)
+    val t2 = Transfer.Id(id = 2)
 
     // Transactions are Messages that have multiple effects
     case class T1() extends Transaction[Unit] {
       def eff = {
-        a1 ! Open(initial = 80.0)
-        a2 ! Open(initial = 120.0)
+        a1 ! Account.Open(initial = 80.0)
+        a2 ! Account.Open(initial = 120.0)
       }
     }
     
     case class T2() extends Transaction[Unit] {
       def eff = {
-        t1 ! Create(from = a1, to = a2, amount = 30.0)
-        t1 ! Book()
+        t1 ! Transfer.Create(_from = a1, _to = a2, _amount = 30.0)
+        t1 ! Transfer.Book()
       }
     }
 
     case class T3() extends Transaction[Unit] {
       def eff = {
-        t2 ! Create(from = a1, to = a2, amount = 40.0)
-        t2 ! Book()
+        t2 ! Transfer.Create(_from = a1, _to = a2, _amount = 40.0)
+        t2 ! Transfer.Book()
       }
     }
 
