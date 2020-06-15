@@ -5,11 +5,11 @@ object  Transfer {
   import Account._
 
   case class TransferId  (id: Long) extends StateId[TransferData] { def initData = TransferData() }
-  case class TransferData(from: Account.AccountId = null, to: Account.AccountId = null, amount: Double = 0.0)
+  case class TransferData(from: AccountId = null, to: AccountId = null, amount: Double = 0.0)
 
   trait TransferMessage[+R] extends StateMessage[TransferData, TransferId, R]
 
-  case class Create(from: Account.AccountId, to: Account.AccountId, amount: Double) extends TransferMessage[Unit] {
+  case class Create(from: AccountId, to: AccountId, amount: Double) extends TransferMessage[Unit] {
     def nst = { case "Initial" => "Created" }
     def pre = { amount > 0 && from != to }
     def apl = { data.copy(from = from, to = to, amount = amount) }

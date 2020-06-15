@@ -1,6 +1,5 @@
 package net.manikin.example.bank
 
-
 object Main {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
