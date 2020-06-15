@@ -4,6 +4,7 @@ object Transactor {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.DefaultContext._
 
+  // A Transactor commits to a DefaultContext. Upon failure it retries.
   case class Transactor(private var ctx: DefaultContext = DefaultContext()) {
     def apply[O](id: Id[O]): VObject[O] = ctx.apply(id)
     def commit[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = commit(id, message, 3)

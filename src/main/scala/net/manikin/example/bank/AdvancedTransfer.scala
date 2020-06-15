@@ -1,6 +1,6 @@
 package net.manikin.example.bank
 
-object Main {
+object AdvancedTransfer {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
   import net.manikin.core.context.DefaultContext._
@@ -12,15 +12,18 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val store = new InMemoryStore() // The Transactors share the same backing Store
-    
+
+    // Two independent Contexts with associated Transactors
     val tx1 = Transactor(DefaultContext(store))
     val tx2 = Transactor(DefaultContext(store))
 
+    // Set up identifiers
     val a1 = AccountId(iban = IBAN("A1"))
     val a2 = AccountId(iban = IBAN("A2"))
     val t1 = TransferId(id = 1)
     val t2 = TransferId(id = 2)
 
+    // Transactions are Messages that have multiple effects
     case class T1() extends Transaction[Unit] {
       def eff = {
         a1 ! Open(initial = 80.0)
@@ -42,7 +45,7 @@ object Main {
       }
     }
 
-    tx1.commit(TId(), T1())
+    tx1.commit(TId(), T1())  // tx1 is independent of tx2, but shares the same backing Store
     tx1.commit(TId(), T2())
     tx2.commit(TId(), T3())
     

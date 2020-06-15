@@ -8,6 +8,7 @@ object DefaultContext {
   import net.manikin.core.context.store.InMemoryStore._
   
   // A DefaultContext keeps track of (historical) Object states and Message dispatches
+  // If an Object cannot be found via its Id, it will be fetched from the backing Store
   case class DefaultContext(private val store: Store = new InMemoryStore()) extends Context with Cloneable {
     type ID = Id[_]
     type MV = Map[ID, Long]
@@ -30,7 +31,7 @@ object DefaultContext {
     def previous: Context = previous_
     def failure: Failure = failure_
 
-    def commit(): Option[CommitFailure] = {
+    def commit(): Unit = {
       val result = store.commit(reads, writes, sends)
 
       if (result.isEmpty) {
@@ -40,8 +41,7 @@ object DefaultContext {
         sends = Vector()
         failure_ = null
       }
-
-      result
+      else throw CommitFailureException(result.get)
     }
 
     private def get[O](id: Id[O]): VObject[O] = {
@@ -123,7 +123,6 @@ object DefaultContext {
       }
     }
   }
-
 
   case class ReadSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
   case class WriteSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]

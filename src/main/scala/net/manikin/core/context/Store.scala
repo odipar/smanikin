@@ -20,8 +20,8 @@ object Store {
   trait CommitFailure
   case class StoreFailure() extends CommitFailure
   case class SnapshotFailure(snapshot: Map[Id[_], Long]) extends CommitFailure
-
-  case class WriteFailureException(f: CommitFailure) extends Exception {
-    override def toString = "WriteFailureException(" + f + ")"
+  
+  case class CommitFailureException(f: CommitFailure) extends Exception {
+    override def toString = "CommitFailureException(" + f + ")"
   }
 }
