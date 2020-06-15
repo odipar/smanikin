@@ -15,11 +15,11 @@ object Fibonacci {
     def arg = f.arg
 
     def eff = f.state match {
-      case "Memorized" => { println("memorized: " + f) ; f.data }
-      case _ => f ! Memorize {
+      case "Initial" => f ! Memorize {
         if (arg < 2) arg
         else (self ! Calculate(Fibonacci(arg - 1))) + (self ! Calculate(Fibonacci(arg - 2)))
       }
+      case "Memorized" => { println("memorized: " + f) ; f.data }
     }
   }
 
@@ -43,12 +43,8 @@ object Fibonacci {
     val tx2 = Transactor(DefaultContext(store))
 
     val r1 = tx1.commit(TId(), Calculate(Fibonacci(20))) // re-uses the internal memoized version of Fibonacci
-
-    println("next")
-    
+    println("Fibonacci(20): " + r1)
     val r2 = tx2.commit(TId(), Calculate(Fibonacci(30))) // will re-use the memoized version of Fibonacci via the Store
-
-    println("r1: " + r1)
-    println("r2: " + r2)
+    println("Fibonacci(30): " + r2)
   }
 }

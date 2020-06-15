@@ -15,11 +15,11 @@ object Factorial {
     def arg = f.arg
 
     def eff = f.state match {
-      case "Memorized" => { println("memorized: " + f) ; f.data }
-      case _ => f ! Memorize {
+      case "Initial" => f ! Memorize {
         if (arg < 2) arg
         else arg * (self ! Calculate(Factorial(arg - 1)))
       }
+      case "Memorized" => { println("memorized: " + f) ; f.data }
     }
   }
 
@@ -43,12 +43,8 @@ object Factorial {
     val tx2 = Transactor(DefaultContext(store))
     
     val r1 = tx1.commit(TId(), Calculate(Factorial(5)))
-
-    println("next")
-    
+    println("Factorial(5): " + r1)
     val r2 = tx2.commit(TId(), Calculate(Factorial(10))) // will re-use the memoized version of Factorial via the Store
-
-    println("r1: " + r1)
-    println("r2: " + r2)
+    println("Factorial(10): " + r2)
   }
 }
