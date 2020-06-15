@@ -14,10 +14,10 @@ object DefaultContext {
     private var level = 0
     private var failure_ : Failure = _
     private var previous_ : DefaultContext = _
-    private var state: ST = Map()
-    private var reads: MV = Map()
-    private var writes: MV = Map()
-    private var sends: Vector[STYPE] = Vector()
+    var state: ST = Map()
+    var reads: MV = Map()
+    var writes: MV = Map()
+    var sends: Vector[STYPE] = Vector()
 
     def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
     def update(ctx: DefaultContext): Unit = state = state ++ store.update(substate((ctx.reads ++ ctx.writes).keySet))
@@ -77,22 +77,25 @@ object DefaultContext {
 
           val new_self = message.app
 
-          if (new_self != old.obj) {
-            new_context.state = new_context.state + (id -> VObject(old.version + 1, new_self))
-            new_context.writes = hit(new_context.writes, id, old.version)
+          val send = {
+            if (new_self == old.obj) ReadSend(level, vid_old, message)
+            else WriteSend(level, vid_old, message)
           }
+
+          new_context.state = new_context.state + (id -> VObject(old.version + 1, new_self))
+          new_context.writes = hit(new_context.writes, id, old.version)
 
           val result = message.eff
 
           // inject previous context for post condition
           new_context.previous_ = previous
-
+          
           if (message.pst) {
+            sends = (sends :+ send) ++ new_context.sends
 
             state = new_context.state
             reads = new_context.reads
             writes = new_context.writes
-            sends = (sends :+ Send(level, VId(new_context(id).version, id), message)) ++ new_context.sends
             previous_ = previous
 
             result
@@ -110,7 +113,7 @@ object DefaultContext {
 
           reads = new_context.reads
           writes = new_context.writes
-          sends = (sends :+ Send(level, VId(new_context(id).version, id), message)) ++ new_context.sends
+          sends = (sends :+ FailureSend(level, vid_old, message)) ++ new_context.sends
           previous_ = previous
 
           throw e
@@ -120,7 +123,16 @@ object DefaultContext {
   }
 
   case class VId[+O](version: Long, id: Id[O])
-  case class Send[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R])
+
+  trait Send[+O, I <: Id[O], +R] {
+    def level: Int
+    def vid: VId[O]
+    def message: Message[O, I, R]
+  }
+
+  case class ReadSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
+  case class WriteSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
+  case class FailureSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
 
   type STYPE = Send[Any, _ <: Id[Any] , Any]
   

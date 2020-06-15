@@ -12,7 +12,7 @@ object InMemoryStore {
         val id = x._1
         var v_obj = x._2
 
-        var version = v_obj.version + 1
+        var version = v_obj.version
         val evt = events.getOrElse(id, Map())
 
         // replay
@@ -60,7 +60,6 @@ object InMemoryStore {
     private case class ReplayContext(sid: Id[_], vobject: VObject[_]) extends Context {
       def apply[O](id: Id[O]): VObject[O] = { if (sid == id) vobject.asInstanceOf[VObject[O]] ; else error }
       def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = error
-      def withFailure(f: Failure): Unit = error
       def failure: Failure = null
       def previous: Context = error
       def error = sys.error("replaying")

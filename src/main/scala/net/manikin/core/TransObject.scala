@@ -1,5 +1,7 @@
 package net.manikin.core
 
+import java.util.UUID
+
 object TransObject {
 
   import scala.language.implicitConversions
@@ -71,9 +73,9 @@ object TransObject {
     def implies(b: => Boolean) = !a || b
   }
   
-  case class TId() extends Id[Unit] { def init: Unit = { } }
+  case class TId(uuid: UUID = UUID.randomUUID()) extends Id[Unit] { def init: Unit = { } }
 
-  trait Transaction extends Message[Unit, TId, Unit] {
+  trait Transaction[+R] extends Message[Unit, TId, R] {
     def pre = true
     def app = { }
     def pst = true

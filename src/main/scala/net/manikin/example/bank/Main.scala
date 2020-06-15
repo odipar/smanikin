@@ -22,21 +22,21 @@ object Main {
     val t1 = TransferId(id = 1)
     val t2 = TransferId(id = 2)
 
-    case class T1() extends Transaction {
+    case class T1() extends Transaction[Unit] {
       def eff = {
         a1 ! Open(initial = 80.0)
         a2 ! Open(initial = 120.0)
       }
     }
     
-    case class T2() extends Transaction {
+    case class T2() extends Transaction[Unit] {
       def eff = {
         t1 ! Create(from = a1, to = a2, amount = 30.0)
         t1 ! Book()
       }
     }
 
-    case class T3() extends Transaction {
+    case class T3() extends Transaction[Unit] {
       def eff = {
         t2 ! Create(from = a1, to = a2, amount = 40.0)
         t2 ! Book()
