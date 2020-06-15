@@ -19,7 +19,7 @@ Here is a simple Bank transaction example:
 ```scala
 object Main {
   import net.manikin.core.TransObject._
-  import net.manikin.core.DefaultContext._
+  import net.manikin.core.context.DefaultContext._
   import IBAN._
 
   def main(args: Array[String]): Unit = {
@@ -46,7 +46,7 @@ object Main {
 ```
 ```scala
 object Account {
-  import net.manikin.core.StateObject._
+  import net.manikin.core.state.StateObject._
   import IBAN._
   
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
@@ -81,7 +81,7 @@ object Account {
 ```
 ```scala
 object Transaction {
-  import net.manikin.core.StateObject._
+  import net.manikin.core.state.StateObject._
   import Account._
   
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }

@@ -1,17 +1,15 @@
 package net.manikin.example.memoization
 
 object Fibonacci {
-  import net.manikin.core.InMemoryStore._
+  import net.manikin.core.context.store.InMemoryStore._
   import net.manikin.core.TransObject._
-  import net.manikin.core.Transactor._
-  import net.manikin.core.DefaultContext._
-  import net.manikin.core.StateObject._
+  import net.manikin.core.context.Transactor._
+  import net.manikin.core.context.DefaultContext._
+  import net.manikin.core.state.StateObject._
 
   case class Fibonacci(arg: Long) extends StateId[Long] {
     def initData = -1
   }
-
-  trait FibonacciMsg extends StateMessage[Long, Fibonacci, Long]
 
   case class Calculate(f: Fibonacci) extends Transaction[Long] {
     def arg = f.arg
@@ -19,7 +17,7 @@ object Fibonacci {
     def eff = f.state match {
       case "Memorized" => { println("memorized: " + f) ; f.data }
       case _ => f ! Memorize {
-        if (arg < 2) f.arg
+        if (arg < 2) arg
         else (self ! Calculate(Fibonacci(arg - 1))) + (self ! Calculate(Fibonacci(arg - 2)))
       }
     }
@@ -39,13 +37,16 @@ object Fibonacci {
   }
 
   def main(args: Array[String]): Unit = {
-    val s = new InMemoryStore()
+    val store = new InMemoryStore() // The Transactors share the same backing Store
 
-    val tx1 = Transactor(DefaultContext(store = s))
-    val tx2 = Transactor(DefaultContext(store = s))
+    val tx1 = Transactor(DefaultContext(store))
+    val tx2 = Transactor(DefaultContext(store))
 
-    val r1 = tx1.commit(TId(), Calculate(Fibonacci(5)))
-    val r2 = tx2.commit(TId(), Calculate(Fibonacci(10)))  // will re-use the memoized version of Fibonacci(5) via the Store
+    val r1 = tx1.commit(TId(), Calculate(Fibonacci(20))) // re-uses the internal memoized version of Fibonacci
+
+    println("next")
+    
+    val r2 = tx2.commit(TId(), Calculate(Fibonacci(30))) // will re-use the memoized version of Fibonacci via the Store
 
     println("r1: " + r1)
     println("r2: " + r2)

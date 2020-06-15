@@ -1,8 +1,8 @@
-package net.manikin.core
+package net.manikin.core.context
 
 object Transactor {
-  import net.manikin.core.DefaultContext._
   import net.manikin.core.TransObject._
+  import net.manikin.core.context.DefaultContext._
 
   case class Transactor(private var ctx: DefaultContext = DefaultContext()) {
     def apply[O](id: Id[O]): VObject[O] = ctx.apply(id)
@@ -12,14 +12,9 @@ object Transactor {
 
       try {
         val result = new_context.send(id, message)
-
-        new_context.commit() match {
-          case Some(x) => throw WriteFailureException(x)
-          case None => {
-            ctx = new_context
-            result
-          }
-        }
+        new_context.commit()
+        ctx = new_context
+        result
       }
       catch {
         case e: Throwable => {

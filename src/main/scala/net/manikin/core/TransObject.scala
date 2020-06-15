@@ -1,9 +1,7 @@
 package net.manikin.core
 
-import java.util.UUID
-
 object TransObject {
-
+  import java.util.UUID
   import scala.language.implicitConversions
 
   // An Id that identifies an Object O
@@ -61,16 +59,13 @@ object TransObject {
   case class FailureException(f: Failure) extends Exception {
     override def toString = "FailureException(" + f + ")"
   }
+  
   case class ExceptionFailure(t: Throwable) extends Failure {
     override def toString = "ExceptionFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
   }
 
   implicit class IdSyntax[O](id: Id[O]) {
     def ![I <: Id[O], R](msg: Message[O, I, R])(implicit ctx: Context): R = ctx.send(id, msg)
-  }
-
-  implicit def extendedBoolean(a: Boolean) = new {
-    def implies(b: => Boolean) = !a || b
   }
   
   case class TId(uuid: UUID = UUID.randomUUID()) extends Id[Unit] { def init: Unit = { } }

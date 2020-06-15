@@ -1,7 +1,7 @@
 package net.manikin.example.bank
 
 object  Transfer {
-  import net.manikin.core.StateObject._
+  import net.manikin.core.state.StateObject._
   import Account._
 
   case class TransferId  (id: Long) extends StateId[TransferData] { def initData = TransferData() }

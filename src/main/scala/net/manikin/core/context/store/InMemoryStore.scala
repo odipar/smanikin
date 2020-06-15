@@ -1,7 +1,7 @@
-package net.manikin.core
+package net.manikin.core.context.store
 
 object InMemoryStore {
-  import net.manikin.core.DefaultContext._
+  import net.manikin.core.context.Store._
   import net.manikin.core.TransObject._
 
   class InMemoryStore extends Store {
@@ -35,9 +35,9 @@ object InMemoryStore {
     val empty = Map[Long, STYPE]()
 
     def commit(reads: Map[Id[_], Long], writes: Map[Id[_], Long], sends: Vector[STYPE]): Option[CommitFailure] = {
-      println("reads: " + reads)
+      /*println("reads: " + reads)
       println("writes: " + writes)
-      println("commit: " + sends)
+      println("commit: " + sends) */
 
       this.synchronized { // atomic
         if (writes.nonEmpty) {

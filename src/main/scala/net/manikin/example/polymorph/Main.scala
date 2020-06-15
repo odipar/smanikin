@@ -2,8 +2,8 @@ package net.manikin.example.polymorph
 
 object Main {
   import net.manikin.core.TransObject._
-  import net.manikin.core.StateObject._
-  import net.manikin.core.DefaultContext.DefaultContext
+  import net.manikin.core.state.StateObject._
+  import net.manikin.core.context.DefaultContext.DefaultContext
 
   trait Base extends Serializable {
     def item: String

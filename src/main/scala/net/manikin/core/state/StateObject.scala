@@ -1,4 +1,4 @@
-package net.manikin.core
+package net.manikin.core.state
 
 object StateObject {
   import net.manikin.core.TransObject._
