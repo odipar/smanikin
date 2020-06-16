@@ -7,6 +7,8 @@ Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language
 ### Message dispatch through Contexts
 Messages are dispatched via Transactional Contexts which are updated and passed through after each (nested) dispatch.
 Contexts keep track of all intermediate and previous Object states, in order to do rollbacks in case of failure.
+
+### Distributed Transactions
 Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Transactions (backed by databases such as CockroachDB) - with (optionally) very strong Transactional guarantees (fully Serializable).  
                                                            
 ### Syntax and types
