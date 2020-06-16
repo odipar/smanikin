@@ -1,6 +1,6 @@
 # Manikin
 Manikin is an embedded Scala Domain Specific Language (DSL) that implements Transactional Objects - Objects that participate and interact in the scope of Transactions.
-Manikin guards Object states with pre- and post Conditions, and tracks all stateful Effects and dispatched Messages.
+Manikin guards Object states with pre- and post Conditions, while tracking all stateful Effects and dispatched Messages.
 
 Manikin is heavily inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory) that have similar goals.
 
