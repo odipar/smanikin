@@ -5,15 +5,15 @@ Its most prominent feature is that Manikin guards Object states with pre- and po
 Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory).
 
 ### Message dispatch through Contexts
-Messages are dispatched via Transactional Contexts which are updated and passed through after each (nested) dispatch.
-Contexts keep track of all intermediate and previous Object states, in order to do rollbacks in case of failure.
+Messages are dispatched via Transactional Contexts which are then functionally updated and passed through after each (nested) dispatch.
+Because Contexts keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure.
 
 ### Distributed Transactions
 Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Transactions (backed by databases such as CockroachDB) - with (optionally) very strong Transactional guarantees (fully Serializable).  
                                                            
 ### Syntax and types
-Manikin tries to reduce the amount of boilerplate by minimal use of Scala's more advanced features such as implicits. 
-The goal of Manikin is to be able to succinctly specify Objects, Messages and Conditions, while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
+Manikin tries to reduce the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
+The goal of Manikin is to be able to succinctly specify Objects, Messages, Conditions and Effects, while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
 
 Here is a simple Bank Transfer example:
 ```scala
