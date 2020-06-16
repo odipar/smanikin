@@ -25,7 +25,7 @@ object Transfer {
     def nst = { case "Created" => "Booked" }
     def pre = true
     def apl = data
-    def eff = { from ! Withdraw(data.amount) ; to ! Deposit(data.amount) }
+    def eff = { from ! Withdraw(amount) ; to ! Deposit(amount) }
     def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
   }
 }

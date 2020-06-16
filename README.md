@@ -9,11 +9,11 @@ Messages are dispatched via Transactional Contexts which are then functionally u
 Because Contexts keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure.
 
 ### Distributed Transactions
-Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Transactions (backed by databases such as CockroachDB) - with (optionally) very strong Transactional guarantees (fully Serializable).  
+Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Transactions - backed by databases such as [CockroachDB](https://www.cockroachlabs.com) - with strong [Serializability](https://en.wikipedia.org/wiki/Serializability) guarantees.  
                                                            
 ### Syntax and types
-Manikin tries to reduce the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
 The goal of Manikin is to be able to succinctly specify Objects, Messages, Conditions and Effects, while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
+Additionally, Manikin reduces the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
 
 Here is a simple Bank Transfer example:
 ```scala

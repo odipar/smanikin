@@ -24,8 +24,8 @@ object TransObject {
 
   trait Message[+O, +I <: Id[O], +R] {
     // context and this will be injected
-    var contextVar: Context = null
-    var thisVar: Id[_] = null // vars cannot be covariant, so hack it
+    var thisVar: Id[_] = _ // vars cannot be covariant, so hack it
+    var contextVar: Context = _
 
     implicit def context: Context = contextVar
     def self: I = thisVar.asInstanceOf[I]
