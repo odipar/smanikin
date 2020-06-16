@@ -1,21 +1,21 @@
 # Manikin
-Manikin is an embedded Scala DSL that implements Transactional Objects - Objects that participate and interact in the scope of Transactions.
-Its most prominent feature is that Manikin guards Object states with pre- and post Conditions.
+Manikin is an embedded Scala Domain Specific Language (DSL) that implements Transactional Objects - Objects that participate and interact in the scope of Transactions.
+Manikin guards Object states with pre- and post Conditions, and tracks all stateful Effects and dispatched Messages.
 
-Manikin is inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory).
+Manikin is heavily inspired by the [Eiffel](https://www.eiffel.com) programming language and [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory) that have similar goals.
 
 ### Message dispatch through Contexts
 Messages are dispatched via Transactional Contexts which are then functionally updated and passed through after each (nested) dispatch.
-Because Contexts keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure.
+Because Contexts keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure, or retry Transactions.
 
 ### Distributed Transactions
 Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Transactions - backed by databases such as [CockroachDB](https://www.cockroachlabs.com) - with strong [Serializability](https://en.wikipedia.org/wiki/Serializability) guarantees.  
                                                            
 ### Syntax and types
-The goal of Manikin is to be able to succinctly specify Objects, Messages, Conditions and Effects, while still being *statically* typed (as Manikin piggybacks on Scala's advanced typed system). 
+You can succinctly specify Objects, Messages, Conditions and Effects with Manikin *and* statically type them (as Manikin piggybacks on Scala's advanced typed system). 
 Additionally, Manikin reduces the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
 
-Here is a simple Bank Transfer example:
+Here is a simple Bank Transfer example, written in the Manikin DSL:
 ```scala
 object SimpleTransfer {
   import net.manikin.core.TransObject._
