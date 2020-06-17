@@ -1,5 +1,7 @@
 package net.manikin.core.context
 
+import net.manikin.core.TransObject
+
 object Store {
   import net.manikin.core.TransObject._
 
@@ -9,7 +11,15 @@ object Store {
 
   trait Store {
     def update(state: ST): ST
-    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[CommitFailure]
+    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[StoreFailure]
+  }
+
+  case class ReplayContext(sid: ID, obj: VObject[_]) extends Context {
+    def apply[O](id: Id[O]): VObject[O] = { if (sid == id) obj.asInstanceOf[VObject[O]] ; else error }
+    def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = error
+    def failure: TransObject.Failure = null
+    def previous: Context = error
+    def error = sys.error("replaying")
   }
 
   type SEND = Send[Any, _ <: Id[Any] , Any]
@@ -26,11 +36,14 @@ object Store {
 
   case class VId[+O](version: Long, id: Id[O])
 
-  trait CommitFailure
-  case class StoreFailure() extends CommitFailure
-  case class SnapshotFailure(snapshot: MV) extends CommitFailure
-  
-  case class CommitFailureException(f: CommitFailure) extends Exception {
+  trait StoreFailure
+  case class SnapshotFailure(snapshot: MV) extends StoreFailure
+  case class DatabaseFailure() extends StoreFailure
+  case class CommitFailure(t: Throwable) extends StoreFailure {
+    override def toString = "CommitFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
+  }
+
+  case class CommitFailureException(f: StoreFailure) extends Exception {
     override def toString = "CommitFailureException(" + f + ")"
   }
 }

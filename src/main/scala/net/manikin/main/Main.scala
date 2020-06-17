@@ -1,5 +1,7 @@
 package net.manikin.main
 
+import net.manikin.serialization.SerializationUtils
+
 object Main {
 
   import net.manikin.example._

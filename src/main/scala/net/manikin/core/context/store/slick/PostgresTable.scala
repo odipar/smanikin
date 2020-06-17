@@ -12,7 +12,7 @@ object PostgresTable {
     def * = (tx_uuid, tx_id, tx_size)
   }
 
-  class Event(tag: Tag) extends Table[(Array[Byte], Long, Long, Long, Int, Int, Array[Byte], String, String)](tag, "event") {
+  class Event(tag: Tag) extends Table[(Array[Byte], Long, Long, Long, Int, Int, Array[Byte], String, String, String)](tag, "event") {
     def id = column[Array[Byte]]("id")
     def event_id = column[Long]("event_id")
     def tx_uuid = column[Long]("tx_uuid")
@@ -21,10 +21,11 @@ object PostgresTable {
     def tx_seq = column[Int]("tx_seq")
     def event = column[Array[Byte]]("event")
     def id_string = column[String]("id_string")
+    def event_type_string = column[String]("event_type_string")
     def type_string = column[String]("type_string")
 
     def pk = primaryKey("pk_a", (id, event_id))
-    def * = (id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event, id_string, type_string)
+    def * = (id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event, id_string, event_type_string, type_string)
   }
 
   val transaction = TableQuery[Transaction]
@@ -47,6 +48,7 @@ object PostgresTable {
     tx_seq integer not null,
     event bytea not null,
     id_string text,
+    event_type_string text,
     type_string text,
     primary key(id, event_id)
   );

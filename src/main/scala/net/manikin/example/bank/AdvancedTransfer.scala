@@ -1,5 +1,7 @@
 package net.manikin.example.bank
 
+import net.manikin.core.context.store.slick.PostgresStore.PostgresStore
+
 object AdvancedTransfer {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
@@ -9,7 +11,7 @@ object AdvancedTransfer {
   import IBAN._
 
   def main(args: Array[String]): Unit = {
-    val store = new InMemoryStore() // The Transactors share the same backing Store
+    val store = new PostgresStore() // The Transactors share the same backing Store
 
     // Two independent Contexts with associated Transactors
     val tx1 = Transactor(DefaultContext(store))

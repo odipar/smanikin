@@ -9,6 +9,8 @@ object TransObject {
 
     def obj(implicit ctx: Context): O = ctx(this).obj
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
+
+    def typeString = this.init.getClass.getName.replace("$", ".")
   }
 
   /*
@@ -24,8 +26,8 @@ object TransObject {
 
   trait Message[+O, +I <: Id[O], +R] {
     // context and this will be injected
-    var thisVar: Id[_] = _ // vars cannot be covariant, so hack it
-    var contextVar: Context = _
+    @volatile var thisVar: Id[_] = _ // vars cannot be covariant, so hack it
+    @volatile var contextVar: Context = _
 
     implicit def context: Context = contextVar
     def self: I = thisVar.asInstanceOf[I]
@@ -34,6 +36,8 @@ object TransObject {
     def app: O
     def eff: R
     def pst: Boolean
+
+    def typeString : String = this.getClass.getName.replace("$", ".")
   }
 
   /*

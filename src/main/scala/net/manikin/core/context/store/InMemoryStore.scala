@@ -35,7 +35,7 @@ object InMemoryStore {
 
     val empty = Map[Long, SEND]()
 
-    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[CommitFailure] = {
+    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[StoreFailure] = {
       this.synchronized { // atomic
         val rw = reads ++ writes
         
@@ -51,14 +51,6 @@ object InMemoryStore {
 
         None
       }
-    }
-
-    private case class ReplayContext(sid: ID, obj: VObject[_]) extends Context {
-      def apply[O](id: Id[O]): VObject[O] = { if (sid == id) obj.asInstanceOf[VObject[O]] ; else error }
-      def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = error
-      def failure: Failure = null
-      def previous: Context = error
-      def error = sys.error("replaying")
     }
   }
 }

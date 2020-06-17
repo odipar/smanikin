@@ -16,6 +16,10 @@ object StateObject {
 
     def data(implicit ctx: Context): O = obj.data
     def old_data(implicit ctx: Context): O = old_obj.data
+
+    override def typeString = {
+      "StateObject("+this.init.data.getClass.getName.replace("$", ".")+",_)"
+    }
   }
 
   // A StateObject goes through 'transitions' - from one abstract state to another
