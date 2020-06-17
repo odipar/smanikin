@@ -26,7 +26,10 @@ object PostgresStore {
 
         // replay all events that occurred after the current version of the object
         val eventQuery = event.filter(x => x.id === idb && x.event_id >= v_obj.version).result
-        val events = Await.result(db.run(eventQuery), Duration.Inf)
+
+        // We don't need to be very strict, we just don't want to see uncommitted data
+        val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.ReadCommitted)
+        val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
 
         events.foreach { evt =>
           val id = toObject[Id[Any]](evt._1)
