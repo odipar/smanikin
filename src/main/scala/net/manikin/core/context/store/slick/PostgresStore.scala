@@ -66,18 +66,7 @@ object PostgresStore {
         msg.contextVar = null
 
         // prepare event record
-        event += (
-          toBytes(id, buffer),
-          s.vid.version,
-          0,
-          0,
-          s.level,
-          0,
-          toBytes(msg, buffer),
-          id.toString,
-          msg.typeString,
-          id.typeString
-        )
+        event += (toBytes(id, buffer), s.vid.version, 0, 0, s.level, 0, toBytes(msg, buffer), id.toString, msg.typeString, id.typeString)
       })
 
       // both snapshot checks and inserts need to be in one transaction

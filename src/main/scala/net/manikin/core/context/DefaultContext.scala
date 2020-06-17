@@ -11,17 +11,17 @@ object DefaultContext {
     private var level = 0
     private var failure_ : Failure = _
     private var previous_ : DefaultContext = _
-    var state: ST = Map()
-    var reads_ : MV = Map()
-    var writes_ : MV = Map()
-    var sends: Vector[SEND] = Vector()
+    private var state: ST = Map()
+    private var reads : MV = Map()
+    private var writes : MV = Map()
+    private var sends: Vector[SEND] = Vector()
 
     def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
     def update(ctx: DefaultContext): Boolean = {
-      val old = sub_state((ctx.reads_ ++ ctx.writes_).keySet)
+      val old = sub_state((ctx.reads ++ ctx.writes).keySet)
       val updated = store.update(old)
       state = state ++ updated
-      old != updated   // return whether anything got updated
+      old != updated   // return whether anything got updated (no retries needed if not)
     }
 
     private def sub_state(ids: Set[ID]): ST = ids.map(id => (id, get(id))).toMap
@@ -31,12 +31,12 @@ object DefaultContext {
     def failure: Failure = failure_
 
     def commit(): Unit = {
-      val result = store.commit(reads_, writes_, sends)
+      val result = store.commit(reads, writes, sends)
 
       if (result.isEmpty) {
         previous_ = this.clone.asInstanceOf[DefaultContext]
-        reads_ = Map()
-        writes_ = Map()
+        reads = Map()
+        writes = Map()
         sends = Vector()
         failure_ = null
       }
@@ -54,7 +54,7 @@ object DefaultContext {
 
     def apply[O](id: Id[O]): VObject[O] = {
       val vobj = get(id)
-      reads_ = hit(reads_, id, vobj.version)
+      reads = hit(reads, id, vobj.version)
       vobj
     }
 
@@ -84,7 +84,7 @@ object DefaultContext {
           }
 
           new_context.state = new_context.state + (id -> VObject(old.version + 1, new_self))
-          new_context.writes_ = hit(new_context.writes_, id, old.version)
+          new_context.writes = hit(new_context.writes, id, old.version)
 
           val result = message.eff
 
@@ -95,8 +95,8 @@ object DefaultContext {
             sends = (sends :+ send) ++ new_context.sends
 
             state = new_context.state
-            reads_ = new_context.reads_
-            writes_ = new_context.writes_
+            reads = new_context.reads
+            writes = new_context.writes
             previous_ = previous
 
             result
@@ -112,8 +112,8 @@ object DefaultContext {
             case _ => failure_ = ExceptionFailure(e)
           }
 
-          reads_ = new_context.reads_
-          writes_ = new_context.writes_
+          reads = new_context.reads
+          writes = new_context.writes
           sends = (sends :+ FailureSend(level, vid_old, message)) ++ new_context.sends
           previous_ = previous
 
