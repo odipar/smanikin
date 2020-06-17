@@ -27,7 +27,7 @@ object AdvancedTransfer {
     case class T1() extends Transaction[Unit] {
       def eff = {
         a1 ! Account.Open(initial = 80.0)
-        a2 ! Account.Open(initial = 120.0)
+        //a2 ! Account.Open(initial = 120.0)
       }
     }
     
@@ -46,13 +46,15 @@ object AdvancedTransfer {
     }
 
     tx1.commit(TId(), T1())  // tx1 is independent of tx2, but shares the same backing Store
-    tx1.commit(TId(), T2())
-    tx2.commit(TId(), T3())
+    //tx1.commit(TId(), T2())
+    //tx1.commit(TId(), T3())
     
-    println("a1: " + tx2(a1).obj) // a1: StateObject(Data(10.0),Opened)
-    println("a2: " + tx2(a2).obj) // a2: StateObject(Data(190.0),Opened)
-    println("t1: " + tx2(t1).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
-    println("t2: " + tx2(t2).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
+    println("a1: " + tx1(a1).obj) // a1: StateObject(Data(10.0),Opened)
+    println("a2: " + tx1(a2).obj) // a2: StateObject(Data(190.0),Opened)
+    println("t1: " + tx1(t1).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
+    println("t2: " + tx1(t2).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
+
+    println("tx2: " + tx2(a1))
   }
 }
 

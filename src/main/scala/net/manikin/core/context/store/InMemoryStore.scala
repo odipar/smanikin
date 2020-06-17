@@ -25,8 +25,8 @@ object InMemoryStore {
           msg.contextVar = ReplayContext(id, VObject(version, v_obj.obj))
 
           // apply event
-          v_obj = VObject(version, msg.app)
           version += 1
+          v_obj = VObject(version, msg.app)
         }
 
         (id, v_obj)

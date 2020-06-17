@@ -20,8 +20,8 @@ object Transactor {
       }
       catch {
         case e: Throwable => {
-          ctx.update(new_context)
-          if (retry > 0) commit(id, message, retry - 1)
+          println("retry: " + retry)
+          if (ctx.update(new_context) && retry > 0) commit(id, message, retry - 1)
           else throw e
         }
       }

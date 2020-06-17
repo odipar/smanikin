@@ -13,26 +13,23 @@ object SerializationUtils {
   }
   
   def deepClone[X](o: X): X = {
-    val baos = new ByteArrayOutputStream()
-    val output = new Output(baos)
+    val buffer = new Array[Byte](16384)
+    val output = new Output(buffer)
 
     kryo.writeClassAndObject(output, o)
     output.close()
 
-    kryo.readClassAndObject(new Input(baos.toByteArray)).asInstanceOf[X]
+    kryo.readClassAndObject(new Input(output.toBytes)).asInstanceOf[X]
   }
 
-  def toBytes[X](o: X, baos: ByteArrayOutputStream = new ByteArrayOutputStream(256)): Array[Byte] = {
-    val output = new Output(baos)
+  def toBytes[X](o: X, buffer: Array[Byte] = new Array[Byte](16384)): Array[Byte] = {
+    val output = new Output(buffer)
 
     kryo.writeClassAndObject(output, o)
     output.close()
 
-    baos.toByteArray
+    output.toBytes
   }
 
-  def toObject[X](b: Array[Byte]): X = {
-    kryo.readClassAndObject(new Input(b)).asInstanceOf[X]
-  }
-
+  def toObject[X](b: Array[Byte]): X = kryo.readClassAndObject(new Input(b)).asInstanceOf[X]
 }
