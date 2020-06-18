@@ -1,7 +1,7 @@
 package net.manikin.example.memoization
 
 object Factorial {
-  import net.manikin.core.context.store.InMemoryStore._
+  import net.manikin.core.context.store.slick.PostgresStore._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
   import net.manikin.core.context.DefaultContext._
@@ -37,10 +37,12 @@ object Factorial {
   }
 
   def main(args: Array[String]): Unit = {
-    val store = new InMemoryStore() // The Transactors share the same backing Store
-
+    // The Transactors share the same backing Store, but don't necessarily share the same connection
+    val store = new PostgresStore(tx_uuid = 1)
+    val store2 = new PostgresStore(tx_uuid = 2)
+    
     val tx1 = Transactor(DefaultContext(store))
-    val tx2 = Transactor(DefaultContext(store))
+    val tx2 = Transactor(DefaultContext(store2))
     
     val r1 = tx1.commit(TId(), Calculate(Factorial(5)))
     println("Factorial(5): " + r1)

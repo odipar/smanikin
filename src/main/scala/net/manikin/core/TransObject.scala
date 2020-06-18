@@ -64,7 +64,7 @@ object TransObject {
   }
   
   case class ExceptionFailure(t: Throwable) extends Failure {
-    override def toString = "ExceptionFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
+    override def toString = "ExceptionFailure(" + t + ")"
   }
 
   implicit class IdSyntax[O](id: Id[O]) {

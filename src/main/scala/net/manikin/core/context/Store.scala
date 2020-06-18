@@ -40,7 +40,7 @@ object Store {
   case class SnapshotFailure(snapshot: MV) extends StoreFailure
   case class DatabaseFailure() extends StoreFailure
   case class CommitFailure(t: Throwable) extends StoreFailure {
-    override def toString = "CommitFailure(" + t + ")\n" + t.getStackTrace.toList.mkString("\n")
+    override def toString = "CommitFailure(" + t + ")"
   }
 
   case class CommitFailureException(f: StoreFailure) extends Exception {

@@ -1,7 +1,8 @@
 package net.manikin.example.memoization
 
+
 object Fibonacci {
-  import net.manikin.core.context.store.InMemoryStore._
+  import net.manikin.core.context.store.slick.PostgresStore._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
   import net.manikin.core.context.DefaultContext._
@@ -37,7 +38,7 @@ object Fibonacci {
   }
 
   def main(args: Array[String]): Unit = {
-    val store = new InMemoryStore() // The Transactors share the same backing Store
+    val store = new PostgresStore() // The Transactors share the same backing Store
 
     val tx1 = Transactor(DefaultContext(store))
     val tx2 = Transactor(DefaultContext(store))

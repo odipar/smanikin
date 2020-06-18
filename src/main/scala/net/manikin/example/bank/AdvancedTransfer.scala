@@ -47,7 +47,7 @@ object AdvancedTransfer {
 
     tx1.commit(TId(), T1())  // tx1 is independent of tx2, but shares the same backing Store
     tx1.commit(TId(), T2())
-    tx2.commit(TId(), T3())
+    //tx2.commit(TId(), T3())
 
     
     // Everything is reflected correctly (lazily) in tx2

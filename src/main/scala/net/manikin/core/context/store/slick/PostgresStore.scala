@@ -1,5 +1,8 @@
 package net.manikin.core.context.store.slick
 
+import com.twitter.chill.ScalaKryoInstantiator
+import net.manikin.core.context.store.slick.PostgresTable.transaction
+
 object PostgresStore {
   import slick.jdbc.PostgresProfile.api._
   import slick.jdbc.TransactionIsolation
@@ -14,14 +17,20 @@ object PostgresStore {
   import SerializationUtils._
 
   // A Postgres backing Store
-  class PostgresStore(config: String = "manikin_db") extends Store {
+  class PostgresStore(config: String = "postgres_db", tx_uuid: Long = Random.nextLong) extends Store {
     val db = Database.forConfig(config)
-
+    
+    val kryo = {
+      val i = new ScalaKryoInstantiator()
+      i.setRegistrationRequired(false)
+      i.newKryo()
+    }
+    
     def update(state: ST): ST = {
       val buffer = new Array[Byte](16384)
 
       state.map { x =>
-        val idb = toBytes(x._1, buffer)
+        val idb = toBytes(x._1, buffer, kryo)
         var v_obj = x._2
 
         // replay all events that occurred after the current version of the object
@@ -32,8 +41,8 @@ object PostgresStore {
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
 
         events.foreach { evt =>
-          val id = toObject[Id[Any]](evt._1)
-          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._7)
+          val id = toObject[Id[Any]](evt._1, kryo)
+          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._7, kryo)
           val version = evt._2
 
           // insert context into message
@@ -50,7 +59,15 @@ object PostgresStore {
     def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[StoreFailure] = {
       val buffer = new Array[Byte](16384)
 
-      val snapshotPlusOne = (reads ++ writes).map(x => (SerializationUtils.toBytes(x._1), x._2 + 1))
+      val q = transaction.filter(_.tx_uuid === tx_uuid).groupBy { _ => true }.map {
+        case (_, group) => group.map(_.tx_id).max
+      }
+      
+      // Determine the next tx_id
+      val max_tx_ids = Await.result(db.run(q.result), Duration.Inf)
+      val tx_id = {if (max_tx_ids.isEmpty) 0L ; else max_tx_ids.head.getOrElse(0L) + 1 }
+      
+      val snapshotPlusOne = (reads ++ writes).map(x => (SerializationUtils.toBytes(x._1, buffer, kryo), x._2 + 1))
 
       // check whether the snapshot (versions) have been invalidated by writes (the event count must be 0)
       val checkSnapshots = snapshotPlusOne.map( rw =>
@@ -60,7 +77,11 @@ object PostgresStore {
           } yield r
       ).toSeq
 
-      val insertEvents = sends.map ( s => {
+      // prepare transaction record
+      val transRecord = { transaction += (tx_uuid, tx_id, sends.size) }
+
+      val insertEvents = sends.indices.map ( index => {
+        val s = sends(index)
         val id = s.vid.id
         val msg = s.message
 
@@ -69,11 +90,11 @@ object PostgresStore {
         msg.contextVar = null
 
         // prepare event record
-        event += (toBytes(id, buffer), s.vid.version, 0, 0, s.level, 0, toBytes(msg, buffer), id.toString, msg.typeString, id.typeString)
+        event += (toBytes(id, buffer, kryo), s.vid.version, tx_uuid, tx_id, s.level, index, toBytes(msg, buffer, kryo), id.toString, msg.typeString, id.typeString)
       })
 
-      // both snapshot checks and inserts need to be in one transaction
-      val checks_inserts = DBIO.seq(checkSnapshots ++ insertEvents: _*)
+      // both snapshot checks, inserts and transaction need to be in one database Transaction
+      val checks_inserts = DBIO.seq((checkSnapshots ++ insertEvents :+ transRecord): _*)
 
       // We need STRICT Serializability from Postgres in order to detect read/write collisions (disallow write-skew)
       val totalTransaction = checks_inserts.transactionally.withTransactionIsolation(TransactionIsolation.Serializable)
@@ -87,5 +108,9 @@ object PostgresStore {
         case None => Some(DatabaseFailure())
       }
     }
+  }
+
+  def main(args: Array[String]): Unit = {
+
   }
 }

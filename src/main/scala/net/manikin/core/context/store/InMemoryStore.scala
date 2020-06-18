@@ -38,11 +38,13 @@ object InMemoryStore {
     def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[StoreFailure] = {
       this.synchronized { // atomic
         val rw = reads ++ writes
-        
+
+        // check if the snapshot has been invalidated by other writes
         rw.foreach {
           r => if (events.getOrElse(r._1, empty).contains(r._2 + 1)) return Some(SnapshotFailure(rw))
         }
 
+        // write events
         sends.foreach { s =>
           val vid = s.vid
           val evts = events.getOrElse(vid.id, Map()) + (vid.version -> s)
