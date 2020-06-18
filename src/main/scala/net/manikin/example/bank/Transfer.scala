@@ -7,7 +7,7 @@ object Transfer {
   case class Id      (id: Long) extends StateId[Transfer] { def initData = Transfer() }
   case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
 
-  trait Msg extends StateMessage[Transfer, Id, Account.Data] {
+  trait Msg extends StateMessage[Transfer, Id, Unit] {
     def amount = data.amount
     def from   = data.from
     def to     = data.to
@@ -17,7 +17,7 @@ object Transfer {
     def nst = { case "Initial" => "Created" }
     def pre = _amount > 0 && _from != _to
     def apl = data.copy(from = _from, to = _to, amount = _amount)
-    def eff = { _from.data }
+    def eff = { }
     def pst = from == _from && to == _to && amount == _amount
   }
 
@@ -25,9 +25,7 @@ object Transfer {
     def nst = { case "Created" => "Booked" }
     def pre = true
     def apl = data
-    def eff = { val r = from ! Withdraw(amount)
-      to ! Deposit(amount) ; to.data
-    }
+    def eff = { from ! Withdraw(amount) ; to ! Deposit(amount) }
     def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
   }
 }
