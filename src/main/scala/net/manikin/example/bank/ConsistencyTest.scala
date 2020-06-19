@@ -8,7 +8,7 @@ object ConsistencyTest {
   import net.manikin.core.context.Transactor._
   import IBAN._
 
-  val nr_accounts = 10   // High contention
+  val nr_accounts = 1000   // High contention
   val nr_transfers = 1000
   val initial_amount = 100.0
 
