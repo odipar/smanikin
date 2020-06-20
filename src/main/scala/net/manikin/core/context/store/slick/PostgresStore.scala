@@ -1,8 +1,5 @@
 package net.manikin.core.context.store.slick
 
-import com.twitter.chill.ScalaKryoInstantiator
-import net.manikin.core.context.store.slick.PostgresTable.transaction
-
 object PostgresStore {
   import slick.jdbc.PostgresProfile.api._
   import slick.jdbc.TransactionIsolation
@@ -15,7 +12,10 @@ object PostgresStore {
   import scala.concurrent.ExecutionContext.Implicits.global
   import scala.util._
   import SerializationUtils._
+  import com.twitter.chill.ScalaKryoInstantiator
 
+  implicit val byteOrder: Ordering[Array[Byte]] = (x: Array[Byte], y: Array[Byte]) => java.util.Arrays.compare(x, y)
+  
   // A Postgres backing Store
   class PostgresStore(config: String = "postgres_db", tx_uuid: Long = Random.nextLong) extends Store {
     val db = Database.forConfig(config)
@@ -56,6 +56,7 @@ object PostgresStore {
       }
     }
 
+
     def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[StoreFailure] = {
       val buffer = new Array[Byte](16384)
 
@@ -70,28 +71,40 @@ object PostgresStore {
       val snapshotPlusOne = (reads ++ writes).map(x => (SerializationUtils.toBytes(x._1, buffer, kryo), x._2 + 1))
 
       // check whether the snapshot (versions) have been invalidated by writes (the event count must be 0)
-      val checkSnapshots = snapshotPlusOne.map( rw =>
+      val checkSnapshots = snapshotPlusOne.
+        toSeq.
+        sorted.      // order on ID and version to avoid expensive deadlocks
+        map( rw =>
           for {
             c <- event.filter(x => x.id === rw._1 && x.event_id === rw._2).length.result
             r <- if (c == 0) DBIO.successful(); else DBIO.failed(new RuntimeException("snapshot invalid"))
           } yield r
-      ).toSeq
+        )
 
       // prepare transaction record
       val transRecord = { transaction += (tx_uuid, tx_id, sends.size) }
+      
+      val orderedEvents = sends.
+        indices.
+        map(index => {
+          val send = sends(index)
+          val id = send.vid.id
+          OrderedMessage(toBytes(id, buffer, kryo), id, index, send.vid.version, send.level, send.message)
+        }).
+        sortBy(x => (x.ida, x.version))  // order on ID and version to avoid expensive deadlocks
 
-      val insertEvents = sends.indices.map ( index => {
-        val s = sends(index)
-        val id = s.vid.id
-        val msg = s.message
 
-        // make sure the message is cleaned from context data
-        msg.thisVar = null
-        msg.contextVar = null
+      val insertEvents = orderedEvents.
+        map ( s => {
+          val msg = s.msg
 
-        // prepare event record
-        event += (toBytes(id, buffer, kryo), s.vid.version, tx_uuid, tx_id, s.level, index, toBytes(msg, buffer, kryo), id.toString, msg.typeString, id.typeString)
-      })
+          // make sure the message is cleaned from context data
+          msg.thisVar = null
+          msg.contextVar = null
+
+          // prepare event record
+          event += (s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(msg, buffer, kryo), s.id.toString, s.msg.typeString, s.id.typeString)
+        })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction
       val checks_inserts = DBIO.seq((checkSnapshots ++ insertEvents :+ transRecord): _*)
@@ -110,7 +123,5 @@ object PostgresStore {
     }
   }
 
-  def main(args: Array[String]): Unit = {
-
-  }
+  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[Any, _ <: Id[Any], Any])
 }
