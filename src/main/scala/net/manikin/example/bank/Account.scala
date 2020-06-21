@@ -7,7 +7,7 @@ object Account {
   case class Id  (iban: IBAN) extends StateId[Data] {
     def initData = Data()
   }
-  case class Data(balance: Long = 0)
+  case class Data(balance: Long = 0) // in cents
 
   trait Msg extends StateMessage[Data, Id, Unit]
 

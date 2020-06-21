@@ -7,9 +7,9 @@ object ConsistencyTest {
   import IBAN._
   import scala.util.Random
 
-  val nr_accounts = 100  // High contention
+  val nr_accounts = 10 // high contention
   val nr_transfers = 1000
-  val initial_amount = 100L
+  val initial_amount = 1000L
 
   def main(args: Array[String]): Unit = {
 
@@ -35,9 +35,9 @@ object ConsistencyTest {
     catch { case t: Throwable => println("t: " + t) }
 
     // Three concurrent 'processes'
-    val thread1 = new Thread { override def run() { randomTransfers(t1, 0) } }
-    val thread2 = new Thread { override def run() { randomTransfers(t2, nr_transfers * 2) } }
-    val thread3 = new Thread { override def run() { randomTransfers(t3, nr_transfers * 4) } }
+    val thread1 = new Thread { override def run() = { randomTransfers(t1, 0) } }
+    val thread2 = new Thread { override def run() = { randomTransfers(t2, nr_transfers * 2) } }
+    val thread3 = new Thread { override def run() = { randomTransfers(t3, nr_transfers * 4) } }
 
     thread1.start()
     thread2.start()
@@ -54,11 +54,12 @@ object ConsistencyTest {
     println("done")
     val sum = t4.commit(TId(), Sum())
     println("sum: " + sum)
-
+    println("A0: " + t4(Account.Id(IBAN("A0"))))
+    
     assert((nr_accounts * initial_amount) == sum)  // A Bank should not lose money!
   }
 
-  def rAmount(range: Long): Long = (Random.nextGaussian().abs * range).round + 1
+  def rAmount(range: Long): Long = (Random.nextGaussian().abs * range.toDouble).round + 1
   def rAccount(nr_accounts: Int): Account.Id = Account.Id(IBAN("A" + Random.nextInt.abs % nr_accounts))
 
   def randomTransfers(tx: Transactor, offset: Int): Unit = {
@@ -69,14 +70,14 @@ object ConsistencyTest {
           var a1 = rAccount(nr_accounts)
           var a2 = rAccount(nr_accounts)
           while (a1 == a2) { a1 = rAccount(nr_accounts) ; a2 = rAccount(nr_accounts) }
-          id ! Transfer.Create(a1, a2, rAmount(initial_amount / 4))
+          id ! Transfer.Create(a1, a2, rAmount(initial_amount / 50))
           id ! Transfer.Book()
         }
       }
 
       if ((t % 100) == 0) println("tx: " + tx + ": " + t)
       try tx.commit(TId(), RandomTransfer())
-      catch { case t: Throwable => /*println("tx: " + t)*/ }
+      catch { case t: Throwable => println("tx: " + t) }
     }
   }
 }

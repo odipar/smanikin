@@ -76,7 +76,7 @@ object PostgresStore {
         map( rw =>
           for {
             c <- event.filter(x => x.id === rw._1 && x.event_id === rw._2).length.result
-            r <- if (c == 0) DBIO.successful(); else DBIO.failed(new RuntimeException("snapshot invalid"))
+            r <- if (c == 0) DBIO.successful({}); else DBIO.failed(new RuntimeException("snapshot invalid"))
           } yield r
         )
 
