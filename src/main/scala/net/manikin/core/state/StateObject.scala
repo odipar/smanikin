@@ -35,11 +35,11 @@ object StateObject {
       val st = self.obj.state
 
       if (nst.isDefinedAt(st)) self.obj.copy(data = apl, state = nst(st))
-      else throw FailureException(NextStateException(self, self.obj, this))
+      else throw FailureException(NextStateException(self, context(self), this))
     }
     def apl: O
   }
 
   // But such transition can go wrong
-  case class NextStateException[+O, I <: Id[O], +R](id: I, state: O, message: Message[O, I, R]) extends Failure
+  case class NextStateException[+O, I <: Id[O], +R](id: I, vid: VObject[StateObject[O]], message: Message[O, I, R]) extends Failure
 }

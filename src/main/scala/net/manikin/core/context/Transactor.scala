@@ -1,5 +1,6 @@
 package net.manikin.core.context
 
+
 object Transactor {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.DefaultContext._

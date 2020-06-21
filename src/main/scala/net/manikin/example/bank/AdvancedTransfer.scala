@@ -1,5 +1,6 @@
 package net.manikin.example.bank
 
+import net.manikin.core.context.store.InMemoryStore
 import net.manikin.core.context.store.slick.PostgresStore.PostgresStore
 
 object AdvancedTransfer {
@@ -11,7 +12,7 @@ object AdvancedTransfer {
   import IBAN._
 
   def main(args: Array[String]): Unit = {
-    val store = new PostgresStore() // The Transactors share the same backing Store
+    val store = new InMemoryStore() // The Transactors share the same backing Store
 
     // Two independent Contexts with associated Transactors
     val tx1 = Transactor(DefaultContext(store))
@@ -26,28 +27,28 @@ object AdvancedTransfer {
     // Transactions are Messages that have multiple effects
     case class T1() extends Transaction[Unit] {
       def eff = {
-        a1 ! Account.Open(initial = 80.0)
-        a2 ! Account.Open(initial = 120.0)
+        a1 ! Account.Open(initial = 80)
+        a2 ! Account.Open(initial = 120)
       }
     }
     
     case class T2() extends Transaction[Unit] {
       def eff = {
-        t1 ! Transfer.Create(_from = a1, _to = a2, _amount = 30.0)
+        t1 ! Transfer.Create(_from = a1, _to = a2, _amount = 30)
         t1 ! Transfer.Book()
       }
     }
 
     case class T3() extends Transaction[Unit] {
       def eff = {
-        t2 ! Transfer.Create(_from = a1, _to = a2, _amount = 40.0)
+        t2 ! Transfer.Create(_from = a1, _to = a2, _amount = 40)
         t2 ! Transfer.Book()
       }
     }
 
     tx1.commit(TId(), T1())  // tx1 is independent of tx2, but shares the same backing Store
     tx1.commit(TId(), T2())
-    //tx2.commit(TId(), T3())
+    tx2.commit(TId(), T3())
 
     
     // Everything is reflected correctly (lazily) in tx2

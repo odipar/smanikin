@@ -4,7 +4,7 @@ object DefaultContext {
   import Store._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.store.InMemoryStore._
-  
+
   // A DefaultContext keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
   case class DefaultContext(private val store: Store = new InMemoryStore()) extends Context with Cloneable {
@@ -12,29 +12,29 @@ object DefaultContext {
     private var failure_ : Failure = _
     private var previous_ : DefaultContext = _
     private var state: ST = Map()
-    private var reads : MV = Map()
-    private var writes : MV = Map()
-    private var sends: Vector[SEND] = Vector()
+    private var reads : ST = Map()
+    private var writes : ST = Map()
+     var sends: Vector[SEND] = Vector()
 
     def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
     def update(ctx: DefaultContext): Boolean = {
-      val old = sub_state((ctx.reads ++ ctx.writes).keySet)
+      val old = ctx.sub_state
       val updated = store.update(old)
       state = state ++ updated
       old != updated   // return whether anything got updated (no retries needed if not)
     }
 
-    private def sub_state(ids: Set[ID]): ST = ids.map(id => (id, get(id))).toMap
-    private def hit(m: MV, id: ID, v: Long): MV = m + (id -> (m.getOrElse(id, Long.MaxValue) min v))
+    private def sub_state: ST = reads.keySet.map(id => (id, state(id))).toMap
 
     def previous: Context = previous_
     def failure: Failure = failure_
 
     def commit(): Unit = {
-      val result = store.commit(reads, writes, sends)
+      val write_origins = sends.groupBy(x => x.vid.id).map(x => (x._1, x._2.map(x => x.vid.version).min))
+      val result = store.commit(reads.map(x => (x._1, x._2.version)) ++ write_origins, sends)
 
       if (result.isEmpty) {
-        previous_ = this.clone.asInstanceOf[DefaultContext]
+        state = state ++ writes
         reads = Map()
         writes = Map()
         sends = Vector()
@@ -43,35 +43,34 @@ object DefaultContext {
       else throw CommitFailureException(result.get)
     }
 
-    private def get[O](id: Id[O]): VObject[O] = {
-      // not a pure get, side-effects state
-      if (state.contains(id)) state(id).asInstanceOf[VObject[O]]
-      else {
-        state = state ++ store.update(Map(id -> VObject(0, id.init)))
-        get(id)
-      }
+    def previous[O](id: Id[O]): VObject[O] = {
+      if (reads.contains(id)) reads(id).asInstanceOf[VObject[O]]
+      else updateFromStore(id)
     }
 
     def apply[O](id: Id[O]): VObject[O] = {
-      val vobj = get(id)
-      reads = hit(reads, id, vobj.version)
-      vobj
+      if (writes.contains(id)) writes(id).asInstanceOf[VObject[O]]
+      else if (reads.contains(id)) reads(id).asInstanceOf[VObject[O]]
+      else updateFromStore(id)
     }
 
+    private def updateFromStore[O](id: Id[O]): VObject[O] = {
+      val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+      reads = reads ++ update
+      state = state ++ update
+      apply(id)
+    }
+    
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {
-      val old = get(id)
+      val old = apply(id)
       val vid_old = VId(old.version, id)
-
-      val previous = copyThis()
-      val new_context = copyThis()
-
-      new_context.previous_ = null
-      new_context.level = level + 1
-      new_context.sends = Vector()
 
       // inject/scope new Context and 'this' into Message
       message.thisVar = id
-      message.contextVar = new_context
+      message.contextVar = this
+
+      val oldSends = sends
+      sends = Vector[SEND]()
 
       try {
         if (message.pre) {
@@ -83,27 +82,20 @@ object DefaultContext {
             else WriteSend(level, vid_old, message)
           }
 
-          new_context.state = new_context.state + (id -> VObject(old.version + 1, new_self))
-          new_context.writes = hit(new_context.writes, id, old.version)
+          writes = writes + (id -> VObject(old.version + 1, new_self))
 
+          level = level + 1
           val result = message.eff
-
-          // inject previous context for post condition
-          new_context.previous_ = previous
+          level = level - 1
 
           if (message.pst) {
-            sends = (sends :+ send) ++ new_context.sends
-
-            state = new_context.state
-            reads = new_context.reads
-            writes = new_context.writes
-            previous_ = previous
-
+            sends = (oldSends :+ send) ++ sends
+            reads = reads ++ writes
             result
           }
-          else throw FailureException(PostFailed(vid_old, id.obj(new_context), message))
+          else throw FailureException(PostFailed(vid_old, id.obj(this), message))
         }
-        else throw FailureException(PreFailed(vid_old, id.obj(new_context), message))
+        else throw FailureException(PreFailed(vid_old, id.obj(this), message))
       }
       catch {
         case e: Throwable => {
@@ -112,17 +104,14 @@ object DefaultContext {
             case _ => failure_ = ExceptionFailure(e)
           }
 
-          reads = new_context.reads
-          writes = new_context.writes
-          sends = (sends :+ FailureSend(level, vid_old, message)) ++ new_context.sends
-          previous_ = previous
+          sends = (oldSends :+ FailureSend(level, vid_old, message)) ++ sends
 
           throw e
         }
       }
     }
   }
-  
+
   case class PreFailed[+O, I <: Id[O], +R](id: VId[O], state: O, message: Message[O, I, R]) extends Failure
   case class PostFailed[+O, I <: Id[O], +R](id: VId[O], state: O, message: Message[O, I, R]) extends Failure
 }

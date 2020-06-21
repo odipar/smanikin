@@ -2,10 +2,9 @@ package net.manikin.example.bank
 
 object Transfer {
   import net.manikin.core.state.StateObject._
-  import Account._
 
   case class Id      (id: Long) extends StateId[Transfer] { def initData = Transfer() }
-  case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
+  case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
 
   trait Msg extends StateMessage[Transfer, Id, Unit] {
     def amount = data.amount
@@ -13,7 +12,7 @@ object Transfer {
     def to     = data.to
   }
 
-  case class Create(_from: Account.Id, _to: Account.Id, _amount: Double) extends Msg {
+  case class Create(_from: Account.Id, _to: Account.Id, _amount: Long) extends Msg {
     def nst = { case "Initial" => "Created" }
     def pre = _amount > 0 && _from != _to
     def apl = data.copy(from = _from, to = _to, amount = _amount)
@@ -25,7 +24,7 @@ object Transfer {
     def nst = { case "Created" => "Booked" }
     def pre = true
     def apl = data
-    def eff = { from ! Withdraw(amount) ; to ! Deposit(amount) }
+    def eff = { from ! Account.Withdraw(amount) ; to ! Account.Deposit(amount) }
     def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
   }
 }

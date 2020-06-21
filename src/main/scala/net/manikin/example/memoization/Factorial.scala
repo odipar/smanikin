@@ -46,6 +46,7 @@ object Factorial {
     
     val r1 = tx1.commit(TId(), Calculate(Factorial(5)))
     println("Factorial(5): " + r1)
+    
     val r2 = tx2.commit(TId(), Calculate(Factorial(10))) // will re-use the memoized version of Factorial via the Store
     println("Factorial(10): " + r2)
   }

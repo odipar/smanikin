@@ -34,16 +34,15 @@ object PostgresStore {
         var v_obj = x._2
 
         // replay all events that occurred after the current version of the object
-        val eventQuery = event.filter(x => x.id === idb && x.event_id >= v_obj.version).result
+        val eventQuery = event.filter(x => x.id === idb && x.event_id >= v_obj.version).sortBy(_.event_id).result
 
-        // We don't need to be very strict, we just don't want to see uncommitted data
-        val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.ReadCommitted)
+        val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.RepeatableRead)
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
 
         events.foreach { evt =>
-          val id = toObject[Id[Any]](evt._1, kryo)
-          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._7, kryo)
-          val version = evt._2
+          val id = toObject[Id[Any]](evt._2, kryo)
+          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._8, kryo)
+          val version = evt._3
 
           // insert context into message
           msg.contextVar = ReplayContext(id, VObject(version, v_obj.obj))
@@ -57,7 +56,7 @@ object PostgresStore {
     }
 
 
-    def commit(reads: MV, writes: MV, sends: Vector[SEND]): Option[StoreFailure] = {
+    def commit(reads: MV, sends: Vector[SEND]): Option[StoreFailure] = {
       val buffer = new Array[Byte](16384)
 
       val q = transaction.filter(_.tx_uuid === tx_uuid).groupBy { _ => true }.map {
@@ -68,10 +67,10 @@ object PostgresStore {
       val max_tx_ids = Await.result(db.run(q.result), Duration.Inf)
       val tx_id = {if (max_tx_ids.isEmpty) 0L ; else max_tx_ids.head.getOrElse(0L) + 1 }
       
-      val snapshotPlusOne = (reads ++ writes).map(x => (SerializationUtils.toBytes(x._1, buffer, kryo), x._2 + 1))
+      val snapshot = reads.map(x => (SerializationUtils.toBytes(x._1, buffer, kryo), x._2))
 
       // check whether the snapshot (versions) have been invalidated by writes (the event count must be 0)
-      val checkSnapshots = snapshotPlusOne.
+      val checkSnapshots = snapshot.
         toSeq.
         sorted.      // order on ID and version to avoid expensive deadlocks
         map( rw =>
@@ -82,28 +81,28 @@ object PostgresStore {
         )
 
       // prepare transaction record
-      val transRecord = { transaction += (tx_uuid, tx_id, sends.size) }
+      val transRecord = { transaction += (0, tx_uuid, tx_id, sends.size) }
       
-      val orderedEvents = sends.
+      val prepareAndOrderEvents = sends.
         indices.
         map(index => {
           val send = sends(index)
           val id = send.vid.id
-          OrderedMessage(toBytes(id, buffer, kryo), id, index, send.vid.version, send.level, send.message)
-        }).
-        sortBy(x => (x.ida, x.version))  // order on ID and version to avoid expensive deadlocks
-
-
-      val insertEvents = orderedEvents.
-        map ( s => {
-          val msg = s.msg
-
+          val msg = send.message
+          
           // make sure the message is cleaned from context data
           msg.thisVar = null
           msg.contextVar = null
 
+          OrderedMessage(toBytes(id, buffer, kryo), id, index, send.vid.version, send.level, msg)
+        }).
+        sortBy(x => (x.ida, x.version))  // order on ID and version to avoid expensive deadlocks
+
+
+      val insertEvents = prepareAndOrderEvents.
+        map ( s => {
           // prepare event record
-          event += (s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(msg, buffer, kryo), s.id.toString, s.msg.typeString, s.id.typeString)
+          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo), s.id.toString, s.msg.typeString, s.id.typeString)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction

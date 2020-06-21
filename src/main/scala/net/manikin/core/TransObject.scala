@@ -47,10 +47,10 @@ object TransObject {
    */
   trait Context {
     def apply[O](id: Id[O]): VObject[O]
+    def previous[O](id: Id[O]): VObject[O]
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R
 
     def failure: Failure
-    def previous: Context
   }
 
   // Objects are versioned by Contexts

@@ -7,11 +7,11 @@ object Account {
   case class Id  (iban: IBAN) extends StateId[Data] {
     def initData = Data()
   }
-  case class Data(balance: Double = 0.0)
+  case class Data(balance: Long = 0)
 
   trait Msg extends StateMessage[Data, Id, Unit]
 
-  case class Open(initial: Double) extends Msg {
+  case class Open(initial: Long) extends Msg {
     def nst = { case "Initial" => "Opened" }
     def pre = initial > 0
     def apl = data.copy(balance = initial)
@@ -19,15 +19,15 @@ object Account {
     def pst = data.balance == initial
   }
 
-  case class Withdraw(amount: Double) extends Msg {
+  case class Withdraw(amount: Long) extends Msg {
     def nst = { case "Opened" => "Opened" }
     def pre = amount > 0 && data.balance > amount
     def apl = data.copy(balance = data.balance - amount)
     def eff = { }
-    def pst = data.balance == old_data.balance - amount
+    def pst = { data.balance == old_data.balance - amount }
   }
 
-  case class Deposit(amount: Double) extends Msg {
+  case class Deposit(amount: Long) extends Msg {
     def nst = { case "Opened" => "Opened" }
     def pre = amount > 0
     def apl = data.copy(balance = data.balance + amount)
