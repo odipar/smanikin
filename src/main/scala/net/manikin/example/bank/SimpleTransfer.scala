@@ -21,7 +21,7 @@ object SimpleTransfer {
     t2 ! Transfer.Book()
     t1 ! Transfer.Book()
 
-    println("sends: " + ctx.sends)
+    //println("sends: " + ctx.sends)
 
     println("a1: " + ctx(a1)) // a1: StateObject(Data(10.0),Opened)
     println("a2: " + ctx(a2)) // a2: StateObject(Data(190.0),Opened)

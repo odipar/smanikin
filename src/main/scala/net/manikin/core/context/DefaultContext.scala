@@ -9,24 +9,26 @@ object DefaultContext {
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
   case class DefaultContext(private val store: Store = new InMemoryStore()) extends Context with Cloneable {
     private var level = 0
+    private var retries_ = 0
     private var failure_ : Failure = _
     private var previous_ : DefaultContext = _
     private var state: ST = Map()
     private var reads : ST = Map()
     private var writes : ST = Map()
-     var sends: Vector[SEND] = Vector()
+    private var sends: Vector[SEND] = Vector()
 
+    def retries = retries_
     def copyThis(): DefaultContext = this.clone().asInstanceOf[DefaultContext]
-    def update(ctx: DefaultContext): Boolean = {
+    def retry(ctx: DefaultContext): Boolean = {
       val old = ctx.sub_state
       val updated = store.update(old)
       state = state ++ updated
+      retries_ += 1
       old != updated   // return whether anything got updated (no retries needed if not)
     }
 
     private def sub_state: ST = reads.keySet.map(id => (id, state(id))).toMap
 
-    def previous: Context = previous_
     def failure: Failure = failure_
 
     def commit(): Unit = {
@@ -39,26 +41,34 @@ object DefaultContext {
         writes = Map()
         sends = Vector()
         failure_ = null
+        retries_ = 0
       }
       else throw CommitFailureException(result.get)
     }
 
     def previous[O](id: Id[O]): VObject[O] = {
       if (reads.contains(id)) reads(id).asInstanceOf[VObject[O]]
-      else updateFromStore(id)
+      else {
+        updateFromStore(id)
+        previous(id)
+      }
     }
+
 
     def apply[O](id: Id[O]): VObject[O] = {
       if (writes.contains(id)) writes(id).asInstanceOf[VObject[O]]
       else if (reads.contains(id)) reads(id).asInstanceOf[VObject[O]]
-      else updateFromStore(id)
+      else {
+        updateFromStore(id)
+        apply(id)
+      }
     }
 
-    private def updateFromStore[O](id: Id[O]): VObject[O] = {
-      val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+    private def updateFromStore[O](id: Id[O]): Unit = {
+      //val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+      val update = Map(id -> state.getOrElse(id, VObject(0, id.init)))
       reads = reads ++ update
       state = state ++ update
-      apply(id)
     }
     
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {

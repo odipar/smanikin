@@ -7,6 +7,9 @@ object TransObject {
   trait Id[+O] {
     def init: O
 
+    def version(implicit ctx: Context) : Long = ctx(this).version
+    def old_version(implicit ctx: Context) : Long = ctx.previous(this).version
+
     def obj(implicit ctx: Context): O = ctx(this).obj
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
 
@@ -37,6 +40,7 @@ object TransObject {
     def eff: R
     def pst: Boolean
 
+    def _retries_ : Int = context.retries
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
 
@@ -50,6 +54,7 @@ object TransObject {
     def previous[O](id: Id[O]): VObject[O]
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R
 
+    def retries: Int
     def failure: Failure
   }
 

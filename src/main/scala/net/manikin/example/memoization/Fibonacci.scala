@@ -15,12 +15,16 @@ object Fibonacci {
   case class Calculate(f: Fibonacci) extends Transaction[Long] {
     def arg = f.arg
 
-    def eff = f.state match {
-      case "Initial" => f ! Memorize {
-        if (arg < 2) arg
-        else (self ! Calculate(Fibonacci(arg - 1))) + (self ! Calculate(Fibonacci(arg - 2)))
+    def eff = {
+      if (f.version == 0 && _retries_ == 0) throw new RuntimeException("Possibly stale - retry")
+
+      f.state match {
+        case "Initial" => f ! Memorize {
+          if (arg < 2) arg
+          else (self ! Calculate(Fibonacci(arg - 1))) + (self ! Calculate(Fibonacci(arg - 2)))
+        }
+        case "Memorized" => { println("memorized: " + f) ; f.data }
       }
-      case "Memorized" => { println("memorized: " + f) ; f.data }
     }
   }
 

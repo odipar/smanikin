@@ -50,12 +50,11 @@ object AdvancedTransfer {
     tx1.commit(TId(), T2())
     tx2.commit(TId(), T3())
 
-    
-    // Everything is reflected correctly (lazily) in tx2
+    // All T2 dependent objects are reflected correctly (lazily) in tx2, except T1
 
     println("a1: " + tx2(a1).obj) // a1: StateObject(Data(10.0),Opened)
     println("a2: " + tx2(a2).obj) // a2: StateObject(Data(190.0),Opened)
-    println("t1: " + tx2(t1).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
+    println("t1: " + tx2(t1).obj) // t1: StateObject(Transfer(null,null,0),Initial)
     println("t2: " + tx2(t2).obj) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
   }
 }

@@ -21,8 +21,9 @@ object Transactor {
       }
       catch {
         case e: Throwable => {
-          if (ctx.update(new_context) && retry > 0) {
-            //println("retry: " + retry)
+          if (retry > 0) {
+            val different = ctx.retry(new_context)
+            if (ctx.retries > 1 && !different) throw e
             commit(id, message, retry - 1)
           }
           else throw e

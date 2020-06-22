@@ -1,29 +1,31 @@
 package net.manikin.example.bank
 
+
 object ConsistencyTest {
   import net.manikin.core.context.DefaultContext.DefaultContext
+  import net.manikin.core.context.store.InMemoryStore.InMemoryStore
   import net.manikin.core.context.store.slick.PostgresStore.PostgresStore
   import net.manikin.core.context.Transactor._
   import IBAN._
   import scala.util.Random
 
-  val nr_accounts = 10 // high contention
-  val nr_transfers = 1000
+  val nr_accounts = 2 // high contention
+  val nr_transfers = 10000
   val initial_amount = 1000L
 
   def main(args: Array[String]): Unit = {
 
-    val db1 = new PostgresStore("postgres_db", 1)
+    /*val db1 = new PostgresStore("postgres_db", 1)
     val db2 = new PostgresStore("postgres_db", 2)
     val db3 = new PostgresStore("postgres_db", 3)
-    val db4 = new PostgresStore("postgres_db", 4)
+    val db4 = new PostgresStore("postgres_db", 4)*/
 
-    //val db1 = new InMemoryStore()
+    val db1 = new InMemoryStore()
     
     val t1 = Transactor(DefaultContext(db1))
-    val t2 = Transactor(DefaultContext(db2))
-    val t3 = Transactor(DefaultContext(db3))
-    val t4 = Transactor(DefaultContext(db4))
+    val t2 = Transactor(DefaultContext(db1))
+    val t3 = Transactor(DefaultContext(db1))
+    val t4 = Transactor(DefaultContext(db1))
 
     // create Accounts
     case class CreateAccounts() extends Transaction[Unit] {
@@ -55,7 +57,7 @@ object ConsistencyTest {
     val sum = t4.commit(TId(), Sum())
     println("sum: " + sum)
     println("A0: " + t4(Account.Id(IBAN("A0"))))
-    
+    println("events: " + db1.events.size)
     assert((nr_accounts * initial_amount) == sum)  // A Bank should not lose money!
   }
 
@@ -69,15 +71,19 @@ object ConsistencyTest {
           val id = Transfer.Id(t + offset)
           var a1 = rAccount(nr_accounts)
           var a2 = rAccount(nr_accounts)
+
           while (a1 == a2) { a1 = rAccount(nr_accounts) ; a2 = rAccount(nr_accounts) }
+
           id ! Transfer.Create(a1, a2, rAmount(initial_amount / 50))
           id ! Transfer.Book()
+          
+          if (_retries_ == 0) throw new RuntimeException("possibly stale data")
         }
       }
 
-      if ((t % 100) == 0) println("tx: " + tx + ": " + t)
+      if ((t % 1000) == 0) println("tx: " + tx + ": " + t)
       try tx.commit(TId(), RandomTransfer())
-      catch { case t: Throwable => println("tx: " + t) }
+      catch { case t: Throwable => /*println("tx: " + t.printStackTrace()) */}
     }
   }
 }
