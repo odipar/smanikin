@@ -65,8 +65,8 @@ object DefaultContext {
     }
 
     private def updateFromStore[O](id: Id[O]): Unit = {
-      //val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
-      val update = Map(id -> state.getOrElse(id, VObject(0, id.init)))
+      val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+      //val update = Map(id -> state.getOrElse(id, VObject(0, id.init)))
       reads = reads ++ update
       state = state ++ update
     }

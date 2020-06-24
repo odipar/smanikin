@@ -38,7 +38,7 @@ object Store {
   case class VId[+O](version: Long, id: Id[O])
 
   trait StoreFailure
-  case class SnapshotFailure(snapshot: MV) extends StoreFailure
+  case class SnapshotFailure() extends StoreFailure
   case class DatabaseFailure() extends StoreFailure
   case class CommitFailure(t: Throwable) extends StoreFailure {
     override def toString = "CommitFailure(" + t + ")"

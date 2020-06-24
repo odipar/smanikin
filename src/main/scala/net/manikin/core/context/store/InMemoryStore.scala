@@ -48,7 +48,7 @@ object InMemoryStore {
         // check if the snapshot has been invalidated by other writes
         reads.foreach {
           r => {
-            if (snap.getOrElse(r._1, empty).contains(r._2)) return Some(SnapshotFailure(reads))
+            if (snap.getOrElse(r._1, empty).contains(r._2)) return Some(SnapshotFailure())
           }
         }
         
