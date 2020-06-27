@@ -16,8 +16,6 @@ object Fibonacci {
     def arg = f.arg
 
     def eff = {
-      if (f.version == 0 && _retries_ == 0) throw new RuntimeException("Possibly stale - retry")
-
       f.state match {
         case "Initial" => f ! Memorize {
           if (arg < 2) arg

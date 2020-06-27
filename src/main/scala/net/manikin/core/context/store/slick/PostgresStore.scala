@@ -13,7 +13,8 @@ object PostgresStore {
   import scala.util._
   import SerializationUtils._
   import com.twitter.chill.ScalaKryoInstantiator
-
+  import scala.language.implicitConversions
+  
   implicit val byteOrder: Ordering[Array[Byte]] = (x: Array[Byte], y: Array[Byte]) => java.util.Arrays.compare(x, y)
   
   // A Postgres backing Store
@@ -25,7 +26,24 @@ object PostgresStore {
       i.setRegistrationRequired(false)
       i.newKryo()
     }
-    
+
+    def eventQuery(idb: Rep[Array[Byte]], version: Rep[Long]) = {
+      event.filter(x => x.id === idb && x.event_id >= version).sortBy(_.event_id)
+    }
+    val eventQueryCompiled = Compiled(eventQuery _)
+
+    def checkSnapshot(id: Rep[Array[Byte]], event_id: Rep[Long]) = {
+      event.filter(x => x.id === id && x.event_id === event_id).length
+    }
+    val checkSnapshotCompiled = Compiled(checkSnapshot _)
+
+    def latestTransaction(tx_uuid: Rep[Long]) = {
+      transaction.filter(_.tx_uuid === tx_uuid).groupBy { _ => true }.map {
+        case (_, group) => group.map(_.tx_id).max
+      }
+    }
+    val latestTransactionCompiled = Compiled(latestTransaction _)
+
     def update(state: ST): ST = {
       val buffer = new Array[Byte](16384)
 
@@ -34,8 +52,8 @@ object PostgresStore {
         var v_obj = x._2
 
         // replay all events that occurred after the current version of the object
-        val eventQuery = event.filter(x => x.id === idb && x.event_id >= v_obj.version).sortBy(_.event_id).result
-
+        val eventQuery = eventQueryCompiled(idb, v_obj.version).result
+        
         val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.RepeatableRead)
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
 
@@ -56,12 +74,10 @@ object PostgresStore {
     }
 
 
-    def commit(reads: MV, sends: Vector[SEND]): Option[StoreFailure] = {
+    def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
       val buffer = new Array[Byte](16384)
 
-      val q = transaction.filter(_.tx_uuid === tx_uuid).groupBy { _ => true }.map {
-        case (_, group) => group.map(_.tx_id).max
-      }
+      val q = latestTransactionCompiled(tx_uuid)
       
       // Determine the next tx_id
       val max_tx_ids = Await.result(db.run(q.result), Duration.Inf)
@@ -75,7 +91,7 @@ object PostgresStore {
         sorted.      // order on ID and version to avoid expensive deadlocks
         map( rw =>
           for {
-            c <- event.filter(x => x.id === rw._1 && x.event_id === rw._2).length.result
+            c <- checkSnapshotCompiled(rw._1, rw._2).result
             r <- if (c == 0) DBIO.successful({}); else DBIO.failed(new RuntimeException("snapshot invalid"))
           } yield r
         )
@@ -102,7 +118,7 @@ object PostgresStore {
       val insertEvents = prepareAndOrderEvents.
         map ( s => {
           // prepare event record
-          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo), s.id.toString, s.msg.typeString, s.id.typeString)
+          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) /*, s.id.toString, s.msg.typeString, s.id.typeString*/)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction

@@ -2,6 +2,7 @@ package net.manikin.core.context.store.slick
 
 object PostgresTable {
   import slick.jdbc.PostgresProfile.api._
+  import scala.language.implicitConversions
 
   class Transaction(tag: Tag) extends Table[(Long, Long, Long, Int)](tag, "transaction") {
     def serial_id = column[Long]("serial_id", O.AutoInc)
@@ -13,7 +14,7 @@ object PostgresTable {
     def * = (serial_id, tx_uuid, tx_id, tx_size)
   }
 
-  class Event(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte], String, String, String)](tag, "event") {
+  class Event(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte]/*, String, String, String*/)](tag, "event") {
     def serial_id = column[Long]("serial_id", O.AutoInc)
     def id = column[Array[Byte]]("id")
     def event_id = column[Long]("event_id")
@@ -27,10 +28,10 @@ object PostgresTable {
     def type_string = column[String]("type_string")
 
     def pk = primaryKey("pk_a", (id, event_id))
-    def * = (serial_id, id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event, id_string, event_type_string, type_string)
+    def * = (serial_id, id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event /*, id_string, event_type_string, type_string*/)
   }
 
-  class OrderedEvent(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte], String, String, String)](tag, "ordered_event") {
+  class OrderedEvent(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte]/*, String, String, String*/)](tag, "ordered_event") {
     def sequence_id = column[Long]("sequence_id")
     def id = column[Array[Byte]]("id")
     def event_id = column[Long]("event_id")
@@ -39,13 +40,13 @@ object PostgresTable {
     def tx_depth = column[Int]("tx_depth")
     def tx_seq = column[Int]("tx_seq")
     def event = column[Array[Byte]]("event")
-    def id_string = column[String]("id_string")
+   /* def id_string = column[String]("id_string")
     def event_type_string = column[String]("event_type_string")
-    def type_string = column[String]("type_string")
+    def type_string = column[String]("type_string") */
 
     def pk = primaryKey("pk_a", sequence_id)
     def idx = index("unique_ordered_event", (id, event_id), unique = true)
-    def * = (sequence_id, id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event, id_string, event_type_string, type_string)
+    def * = (sequence_id, id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event/*, id_string, event_type_string, type_string*/)
   }
 
   class CurrentSnapshot(tag: Tag) extends Table[(Long, Long, Long)](tag, "current_snapshot") {

@@ -40,7 +40,7 @@ object InMemoryStore {
 
     var enter: Int = 0
     
-    def commit(reads: MV, sends: Vector[SEND]): Option[StoreFailure] = {
+    def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
       this.synchronized { // atomic
 
         var snap = events;

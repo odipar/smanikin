@@ -7,9 +7,10 @@ object ConsistencyTest {
   import net.manikin.core.context.Transactor._
   import IBAN._
   import scala.util.Random
+  import scala.language.implicitConversions
 
-  val nr_accounts = 100
-  val nr_batches = 1000
+  val nr_accounts = 1000
+  val nr_batches = 10000
   val batch_size = 10
   val initial_amount = 1000L
 
@@ -17,10 +18,10 @@ object ConsistencyTest {
 
   def main(args: Array[String]): Unit = {
 
-    /*val db1 = new PostgresStore("postgres_db", 1)
-    val db2 = new PostgresStore("postgres_db", 2)
-    val db3 = new PostgresStore("postgres_db", 3)
-    val db4 = new PostgresStore("postgres_db", 4) */
+    /*val db1 = new PostgresStore("cockroach_db1", 1)
+    val db2 = new PostgresStore("cockroach_db2", 2)
+    val db3 = new PostgresStore("cockroach_db3", 3)
+    val db4 = new PostgresStore("cockroach_db1", 4) */
 
     val db1 = new InMemoryStore()
 
@@ -58,10 +59,12 @@ object ConsistencyTest {
 
     println("done")
     println("failures: " + (f1 + f2 + f3))
+
     val sum = t4.commit(TId(), Sum())
     println("sum: " + sum)
     println("nr_events: " + db1.events.size)
     println("max_event: " + db1.events.map(x => (x._1, x._2.size)).maxBy(_._2))
+    
     assert((nr_accounts * initial_amount) == sum)  // A Bank should not lose money!
   }
 
@@ -87,14 +90,14 @@ object ConsistencyTest {
         var a1 = rAccount(nr_accounts)
         var a2 = rAccount(nr_accounts)
         tid += 1
-        while (a1 == a2) {a1 = rAccount(nr_accounts); a2 = rAccount(nr_accounts)}
+        while (a1 == a2) { a1 = rAccount(nr_accounts); a2 = rAccount(nr_accounts) }
         (tid, a1, a2, rAmount(initial_amount / 50))
       }.toList
 
-      if ((tid % 1000) == 0) println("tx: " + tx + ": " + (tid - offset))
+      if ((tid % 10000) == 0) println("tx: " + tx + ": " + (tid - offset))
 
       try tx.commit(TId(), RandomBatchTransfer(work))
-      catch { case t: Throwable => failures += 1/*println("tx: " + t)*/ }
+      catch { case t: Throwable => /*println("t: " + t)*/  ; failures += 1 }
 
     }
     failures

@@ -1,5 +1,7 @@
 package net.manikin.core.context
 
+import scala.collection.immutable.HashMap
+
 object DefaultContext {
   import Store._
   import net.manikin.core.TransObject._
@@ -12,9 +14,9 @@ object DefaultContext {
     private var retries_ = 0
     private var failure_ : Failure = _
     private var previous_ : DefaultContext = _
-    private var state: ST = Map()
-    private var reads : ST = Map()
-    private var writes : ST = Map()
+    private var state: ST = HashMap()
+    private var reads : ST = HashMap()
+    private var writes : ST = HashMap()
     private var sends: Vector[SEND] = Vector()
 
     def retries = retries_
@@ -37,8 +39,8 @@ object DefaultContext {
 
       if (result.isEmpty) {
         state = state ++ writes
-        reads = Map()
-        writes = Map()
+        reads = HashMap()
+        writes = HashMap()
         sends = Vector()
         failure_ = null
         retries_ = 0

@@ -13,6 +13,7 @@ object PostgresReorder {
   import scala.util._
   import SerializationUtils._
   import com.twitter.chill.ScalaKryoInstantiator
+  import scala.language.implicitConversions
 
   class PostgresReorder(config: String = "postgres_db") {
     val db = Database.forConfig(config)
