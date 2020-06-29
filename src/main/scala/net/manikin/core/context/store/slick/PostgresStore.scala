@@ -118,7 +118,7 @@ object PostgresStore {
       val insertEvents = prepareAndOrderEvents.
         map ( s => {
           // prepare event record
-          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) /*, s.id.toString, s.msg.typeString, s.id.typeString*/)
+          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction

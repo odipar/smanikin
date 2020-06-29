@@ -5,7 +5,7 @@ object Main {
   import net.manikin.core.state.StateObject._
   import net.manikin.core.context.DefaultContext.DefaultContext
 
-  trait Base extends Serializable {
+  trait Base {
     def item: String
     def setItem(item: String): Base
   }

@@ -14,7 +14,7 @@ object PostgresTable {
     def * = (serial_id, tx_uuid, tx_id, tx_size)
   }
 
-  class Event(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte]/*, String, String, String*/)](tag, "event") {
+  class Event(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte], String, String, String)](tag, "event") {
     def serial_id = column[Long]("serial_id", O.AutoInc)
     def id = column[Array[Byte]]("id")
     def event_id = column[Long]("event_id")
@@ -28,7 +28,7 @@ object PostgresTable {
     def type_string = column[String]("type_string")
 
     def pk = primaryKey("pk_a", (id, event_id))
-    def * = (serial_id, id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event /*, id_string, event_type_string, type_string*/)
+    def * = (serial_id, id, event_id, tx_uuid, tx_id, tx_depth, tx_seq, event, id_string, event_type_string, type_string)
   }
 
   class OrderedEvent(tag: Tag) extends Table[(Long, Array[Byte], Long, Long, Long, Int, Int, Array[Byte]/*, String, String, String*/)](tag, "ordered_event") {
