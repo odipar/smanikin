@@ -22,7 +22,7 @@ object Account {
     def pre = amount > 0 && data.balance > amount
     def apl = data.copy(balance = data.balance - amount)
     def eff = { }
-    def pst = { data.balance == old_data.balance - amount }
+    def pst = data.balance == old_data.balance - amount
   }
 
   case class Deposit(amount: Long) extends Msg {

@@ -1,11 +1,11 @@
 package net.manikin.core.context
 
-import scala.collection.immutable.HashMap
 
 object DefaultContext {
   import Store._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.store.InMemoryStore._
+  import scala.collection.immutable.HashMap
 
   // A DefaultContext keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
@@ -13,7 +13,6 @@ object DefaultContext {
     private var level = 0
     private var retries_ = 0
     private var failure_ : Failure = _
-    private var previous_ : DefaultContext = _
     private var state: ST = HashMap()
     private var reads : ST = HashMap()
     private var writes : ST = HashMap()
@@ -94,7 +93,8 @@ object DefaultContext {
             else WriteSend(level, vid_old, message)
           }
 
-          writes = writes + (id -> VObject(old.version + 1, new_self))
+          val vobject = VObject(old.version + 1, new_self)
+          writes = writes + (id -> vobject)
 
           level = level + 1
           val result = message.eff
@@ -102,7 +102,7 @@ object DefaultContext {
 
           if (message.pst) {
             sends = (oldSends :+ send) ++ sends
-            reads = reads ++ writes
+            reads = reads + (id -> vobject)
             result
           }
           else throw FailureException(PostFailed(vid_old, id.obj(this), message))
