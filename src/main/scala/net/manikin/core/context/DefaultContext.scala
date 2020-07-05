@@ -48,26 +48,15 @@ object DefaultContext {
     }
 
     def previous[O](id: Id[O]): VObject[O] = {
-      if (reads.contains(id)) reads(id).asInstanceOf[VObject[O]]
-      else {
-        updateFromStore(id)
-        previous(id)
-      }
+      reads.getOrElse(id, { updateFromStore(id) ; previous(id) }).asInstanceOf[VObject[O]]
     }
 
-
     def apply[O](id: Id[O]): VObject[O] = {
-      if (writes.contains(id)) writes(id).asInstanceOf[VObject[O]]
-      else if (reads.contains(id)) reads(id).asInstanceOf[VObject[O]]
-      else {
-        updateFromStore(id)
-        apply(id)
-      }
+      writes.getOrElse(id, reads.getOrElse(id, { updateFromStore(id) ; apply(id) })).asInstanceOf[VObject[O]]
     }
 
     private def updateFromStore[O](id: Id[O]): Unit = {
       val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
-      //val update = Map(id -> state.getOrElse(id, VObject(0, id.init)))
       reads = reads ++ update
       state = state ++ update
     }

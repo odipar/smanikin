@@ -1,25 +1,30 @@
-package net.manikin.core.context.store.slick
+package net.manikin.core.context.store.slick.h2
 
-object PostgresStore {
-  import slick.jdbc.PostgresProfile.api._
-  import slick.jdbc.TransactionIsolation
-  import scala.concurrent.Await
-  import scala.concurrent.duration.Duration
-  import PostgresTable._
+import java.nio.ByteBuffer
+
+object H2Store {
+  import H2Table._
+  import slick.jdbc.H2Profile.api._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Store._
   import net.manikin.serialization.SerializationUtils
-  import scala.concurrent.ExecutionContext.Implicits.global
-  import scala.util._
   import SerializationUtils._
   import com.twitter.chill.ScalaKryoInstantiator
+  import slick.jdbc.TransactionIsolation
+
+  import scala.concurrent.Await
+  import scala.concurrent.ExecutionContext.Implicits.global
+  import scala.concurrent.duration.Duration
   import scala.language.implicitConversions
+  import scala.util._
+  import java.security.MessageDigest
   
   implicit val byteOrder: Ordering[Array[Byte]] = (x: Array[Byte], y: Array[Byte]) => java.util.Arrays.compare(x, y)
-  
-  // A Postgres backing Store
-  class PostgresStore(config: String = "postgres_db", tx_uuid: Long = Random.nextLong) extends Store {
+
+  // A H2 backing Store
+  class H2Store(config: String = "h2_db", tx_uuid: Long = Random.nextLong) extends Store {
     val db = Database.forConfig(config)
+    val s256 = MessageDigest.getInstance("SHA-256")
     
     val kryo = {
       val i = new ScalaKryoInstantiator()
@@ -27,13 +32,14 @@ object PostgresStore {
       i.newKryo()
     }
 
-    def eventQuery(idb: Rep[Array[Byte]], version: Rep[Long]) = {
-      event.filter(x => x.id === idb && x.event_id >= version).sortBy(_.event_id)
+    def eventQuery(i1: Rep[Long], i2: Rep[Long], i3: Rep[Long], i4: Rep[Long], version: Rep[Long]) = {
+      event.filter(x => x.id_1 === i1 && x.id_2 === i2 && x.id_3 === i3 && x.id_4 === i4 && x.event_id >= version).
+        sortBy(_.event_id)
     }
     val eventQueryCompiled = Compiled(eventQuery _)
 
-    def checkSnapshot(id: Rep[Array[Byte]], event_id: Rep[Long]) = {
-      event.filter(x => x.id === id && x.event_id === event_id).length
+    def checkSnapshot(i1: Rep[Long], i2: Rep[Long], i3: Rep[Long], i4: Rep[Long], event_id: Rep[Long]) = {
+      event.filter(x => x.id_1 === i1 && x.id_2 === i2 && x.id_3 === i3 && x.id_4 === i4 && x.event_id === event_id).length
     }
     val checkSnapshotCompiled = Compiled(checkSnapshot _)
 
@@ -48,19 +54,19 @@ object PostgresStore {
       val buffer = new Array[Byte](16384)
 
       state.map { x =>
-        val idb = toBytes(x._1, buffer, kryo)
+        val id = x._1
+        val isha = sha256(toBytes(id, buffer, kryo))
         var v_obj = x._2
 
         // replay all events that occurred after the current version of the object
-        val eventQuery = eventQueryCompiled(idb, v_obj.version).result
-        
+        val eventQuery = eventQueryCompiled(isha._1, isha._2, isha._3, isha._4, v_obj.version).result
+
         val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.RepeatableRead)
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
-
+        
         events.foreach { evt =>
-          val id = toObject[Id[Any]](evt._2, kryo)
-          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._8, kryo)
-          val version = evt._3
+          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._11, kryo)
+          val version = evt._6
 
           // insert context into message
           msg.contextVar = ReplayContext(id, VObject(version, v_obj.obj))
@@ -78,47 +84,49 @@ object PostgresStore {
       val buffer = new Array[Byte](16384)
 
       val q = latestTransactionCompiled(tx_uuid)
-      
+
       // Determine the next tx_id
       val max_tx_ids = Await.result(db.run(q.result), Duration.Inf)
       val tx_id = {if (max_tx_ids.isEmpty) 0L ; else max_tx_ids.head.getOrElse(0L) + 1 }
-      
+
       val snapshot = reads.map(x => (SerializationUtils.toBytes(x._1, buffer, kryo), x._2))
 
       // check whether the snapshot (versions) have been invalidated by writes (the event count must be 0)
       val checkSnapshots = snapshot.
         toSeq.
         sorted.      // order on ID and version to avoid expensive deadlocks
-        map( rw =>
+        map { rw =>
+          val isha = sha256(rw._1)
           for {
-            c <- checkSnapshotCompiled(rw._1, rw._2).result
+            c <- checkSnapshotCompiled(isha._1, isha._2, isha._3, isha._4, rw._2).result
             r <- if (c == 0) DBIO.successful({}); else DBIO.failed(new RuntimeException("snapshot invalid"))
           } yield r
-        )
+        }
 
       // prepare transaction record
       val transRecord = { transaction += (0, tx_uuid, tx_id, sends.size) }
-      
+
       val prepareAndOrderEvents = sends.
         indices.
         map(index => {
           val send = sends(index)
           val id = send.vid.id
           val msg = send.message
-          
+
           // make sure the message is cleaned from context data
           msg.thisVar = null
           msg.contextVar = null
 
-          OrderedMessage(toBytes(id, buffer, kryo), id, index, send.vid.version, send.level, msg)
+          val isha = sha256(toBytes(id, buffer, kryo))
+          OrderedMessage(isha._1, isha._2, isha._3, isha._4, id, index, send.vid.version, send.level, msg)
         }).
-        sortBy(x => (x.ida, x.version))  // order on ID and version to avoid expensive deadlocks
+        sortBy(x => (x.id1, x.id2, x.id3, x.id4, x.version))  // order on ID and version to avoid expensive deadlocks
 
 
       val insertEvents = prepareAndOrderEvents.
         map ( s => {
           // prepare event record
-          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
+          event += (0, s.id1, s.id2, s.id3, s.id4, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction
@@ -130,13 +138,26 @@ object PostgresStore {
       // We block for now, we may want to return a Future or better still wait for JVM fibers
       Await.ready(db.run(totalTransaction), Duration.Inf).value match {
         case Some(x) => x match {
-          case Success(_) => None
+          case Success(_) => {
+            None
+          }
           case Failure(x) => Some(CommitFailure(x))
         }
         case None => Some(DatabaseFailure())
       }
     }
+
+    def createSchema(): Unit = {
+      val schema = event.schema ++ transaction.schema
+      Await.result(db.run(schema.create), Duration.Inf)
+    }
+
+    def sha256(b: Array[Byte]): (Long, Long, Long, Long) = {
+      s256.update(b)
+      val l = ByteBuffer.wrap(s256.digest).asLongBuffer()
+      (l.get(0), l.get(1), l.get(2), l.get(3))
+    }
   }
 
-  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[Any, _ <: Id[Any], Any])
+  case class OrderedMessage(id1: Long, id2: Long, id3: Long, id4: Long, id: Id[Any], index: Int, version: Long, level: Int, msg: Message[Any, _ <: Id[Any], Any])
 }

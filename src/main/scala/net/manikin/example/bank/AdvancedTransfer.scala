@@ -1,5 +1,7 @@
 package net.manikin.example.bank
 
+import net.manikin.core.context.store.slick.h2.H2Store.H2Store
+
 
 object AdvancedTransfer {
   import net.manikin.core.TransObject._
@@ -8,14 +10,15 @@ object AdvancedTransfer {
   import net.manikin.core.context.store.InMemoryStore._
   import scala.collection.immutable.SortedSet
   import net.manikin.core.context.store.InMemoryStore
-  import net.manikin.core.context.store.slick.PostgresStore.PostgresStore
+  import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
   import scala.language.implicitConversions
 
   import IBAN._
 
   def main(args: Array[String]): Unit = {
-    val store = new PostgresStore() // The Transactors share the same backing Store
+    val store = new H2Store() // The Transactors share the same backing Store
 
+    store.createSchema()
     // Two independent Contexts with associated Transactors
     val tx1 = Transactor(DefaultContext(store))
     val tx2 = Transactor(DefaultContext(store))

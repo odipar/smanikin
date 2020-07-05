@@ -11,24 +11,23 @@ object InMemoryStore {
     def update(state: ST): ST = {
        {
         val snap = events
+
         state.map { x =>
           val id = x._1
           var v_obj = x._2
 
-          var version = v_obj.version
           val evt = snap.getOrElse(id, Map())
 
           // replay
-          while (evt.contains(version)) {  
-            val msg = evt(version).message
+          while (evt.contains(v_obj.version)) {
+            val msg = evt(v_obj.version).message
 
             // inject replay context and this
             msg.thisVar = id
-            msg.contextVar = ReplayContext(id, VObject(version, v_obj.obj))
+            msg.contextVar = ReplayContext(id, v_obj)
 
             // apply event
-            version += 1
-            v_obj = VObject(version, msg.app)
+            v_obj = VObject(v_obj.version + 1, msg.app)
           }
 
           (id, v_obj)
@@ -38,8 +37,6 @@ object InMemoryStore {
 
     val empty = Map[Long, SEND]()
 
-    var enter: Int = 0
-    
     def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
       this.synchronized { // atomic
 
@@ -51,7 +48,7 @@ object InMemoryStore {
             if (snap.getOrElse(r._1, empty).contains(r._2)) return Some(SnapshotFailure())
           }
         }
-        
+
         // write events
         sends.foreach { s =>
           val vid = s.vid

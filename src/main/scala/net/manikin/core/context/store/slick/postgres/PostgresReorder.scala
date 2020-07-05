@@ -1,18 +1,12 @@
-package net.manikin.core.context.store.slick
+package net.manikin.core.context.store.slick.postgres
 
 object PostgresReorder {
-  import slick.jdbc.PostgresProfile.api._
-  import slick.jdbc.TransactionIsolation
-  import scala.concurrent.Await
-  import scala.concurrent.duration.Duration
   import PostgresTable._
-  import net.manikin.core.TransObject._
-  import net.manikin.core.context.Store._
-  import net.manikin.serialization.SerializationUtils
+  import slick.jdbc.PostgresProfile.api._
+
+  import scala.concurrent.Await
   import scala.concurrent.ExecutionContext.Implicits.global
-  import scala.util._
-  import SerializationUtils._
-  import com.twitter.chill.ScalaKryoInstantiator
+  import scala.concurrent.duration.Duration
   import scala.language.implicitConversions
 
   class PostgresReorder(config: String = "postgres_db") {

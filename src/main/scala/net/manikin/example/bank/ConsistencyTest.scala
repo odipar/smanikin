@@ -1,15 +1,17 @@
 package net.manikin.example.bank
 
+
 object ConsistencyTest {
   import net.manikin.core.context.DefaultContext.DefaultContext
   import net.manikin.core.context.store.InMemoryStore.InMemoryStore
-  import net.manikin.core.context.store.slick.PostgresStore.PostgresStore
+  import net.manikin.core.context.store.slick.h2.H2Store.H2Store
+  import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
   import net.manikin.core.context.Transactor._
   import IBAN._
   import scala.util.Random
   import scala.language.implicitConversions
 
-  val nr_accounts = 1000
+  val nr_accounts = 10000
   val nr_batches = 1000
   val batch_size = 10
   val initial_amount = 1000L
@@ -23,14 +25,20 @@ object ConsistencyTest {
     val db3 = new PostgresStore("postgres_db", 3)
     val db4 = new PostgresStore("postgres_db", 4)
 
-    //val db1 = new InMemoryStore()
+    try { db1.createSchema() }
 
+    // val db1 = new InMemoryStore()
+    
     val t1 = Transactor(DefaultContext(db1))
     val t2 = Transactor(DefaultContext(db2))
     val t3 = Transactor(DefaultContext(db3))
     val t4 = Transactor(DefaultContext(db4))
+    
+    var f1: Long = 0; var f2: Long =0 ; var f3: Long = 0
 
-    // create Accounts
+    time {
+
+      // create Accounts
     case class CreateAccounts() extends Transaction[Unit] {
       def eff = { for (a <- 0 until nr_accounts) { Account.Id(IBAN("A" + a)) ! Account.Open(initial_amount) } }
     }
@@ -39,20 +47,20 @@ object ConsistencyTest {
     try t4.commit(TId(), CreateAccounts())
     catch { case t: Throwable => println("t: " + t) }
 
-    var f1: Long = 0; var f2: Long =0 ; var f3: Long = 0
     // Three concurrent 'processes'
     val thread1 = new Thread { override def run() = { f1 = randomTransfers(t1, 0) } }
     val thread2 = new Thread { override def run() = { f2 = randomTransfers(t2, total_transfers * 2) } }
     val thread3 = new Thread { override def run() = { f3 = randomTransfers(t3, total_transfers * 4) } }
 
-    thread1.start()
-    thread2.start()
-    thread3.start()
+      thread1.start()
+      thread2.start()
+      thread3.start()
 
-    thread1.join()
-    thread2.join()
-    thread3.join()
-
+      thread1.join()
+      thread2.join()
+      thread3.join()
+    }
+    
     case class Sum() extends Transaction[Long] {
       def eff = (0 until nr_accounts).map(a => Account.Id(IBAN("A" + a)).data.balance).sum
     }
@@ -94,12 +102,21 @@ object ConsistencyTest {
         (tid, a1, a2, rAmount(initial_amount / 50))
       }.toList
 
-      if ((tid % 10000) == 0) println("tx: " + tx + ": " + (tid - offset))
+      if ((tid % 1000) == 0) println("tx: " + tx + ": " + (tid - offset))
 
       try tx.commit(TId(), RandomBatchTransfer(work))
-      catch { case t: Throwable => /*println("t: " + t)*/  ; failures += 1 }
+      catch { case t: Throwable => /*println("t: " + t) */ ; failures += 1 }
 
     }
     failures
+  }
+
+  def time[R](block: => R): R = {
+    val t0 = System.currentTimeMillis()
+    val result = block
+    val t1 = System.currentTimeMillis()
+    val tm = ((t1 - t0) * 100).toDouble / 100000.toDouble
+    println("Elapsed time: " + tm + "s")
+    result
   }
 }
