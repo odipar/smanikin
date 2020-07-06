@@ -9,25 +9,22 @@ object PostgresStore {
   import com.twitter.chill.ScalaKryoInstantiator
   import slick.jdbc.PostgresProfile.api._
   import slick.jdbc.TransactionIsolation
-
   import scala.concurrent.Await
   import scala.concurrent.ExecutionContext.Implicits.global
   import scala.concurrent.duration.Duration
   import scala.language.implicitConversions
   import scala.util._
+  import java.security.MessageDigest
   
   implicit val byteOrder: Ordering[Array[Byte]] = (x: Array[Byte], y: Array[Byte]) => java.util.Arrays.compare(x, y)
   
   // A Postgres backing Store
   class PostgresStore(config: String = "postgres_db", tx_uuid: Long = Random.nextLong) extends Store {
     val db = Database.forConfig(config)
+    val buffer = new Array[Byte](1024 * 1024)
+    val kryo = SerializationUtils.kryoInstantiator.newKryo()
+    val msgd = MessageDigest.getInstance("SHA-256")
     
-    val kryo = {
-      val i = new ScalaKryoInstantiator()
-      i.setRegistrationRequired(false)
-      i.newKryo()
-    }
-
     def eventQuery(idb: Rep[Array[Byte]], version: Rep[Long]) = {
       event.filter(x => x.id === idb && x.event_id >= version).sortBy(_.event_id)
     }
@@ -46,11 +43,10 @@ object PostgresStore {
     val latestTransactionCompiled = Compiled(latestTransaction _)
 
     def update(state: ST): ST = {
-      val buffer = new Array[Byte](16384)
 
       state.map { x =>
         val id = x._1
-        val idb = toBytes(id, buffer, kryo)
+        val idb = digest(id, buffer, kryo, msgd) // the SHA-256 hash of the serialized id
         var v_obj = x._2
 
         // replay all events that occurred after the current version of the object
@@ -76,8 +72,6 @@ object PostgresStore {
 
 
     def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
-      val buffer = new Array[Byte](16384)
-
       val q = latestTransactionCompiled(tx_uuid)
       
       // Determine the next tx_id
@@ -111,7 +105,7 @@ object PostgresStore {
           msg.thisVar = null
           msg.contextVar = null
 
-          OrderedMessage(toBytes(id, buffer, kryo), id, index, send.vid.version, send.level, msg)
+          OrderedMessage(digest(id, buffer, kryo, msgd), id, index, send.vid.version, send.level, msg)
         }).
         sortBy(x => (x.ida, x.version))  // order on ID and version to avoid expensive deadlocks
 
@@ -138,9 +132,14 @@ object PostgresStore {
       }
     }
     
-    def createSchema(): Unit = {
-      val schema = event.schema ++ transaction.schema
-      Await.result(db.run(schema.create), Duration.Inf)
+    def tryToCreateSchema(): Unit = {
+      try {
+        val schema = event.schema ++ transaction.schema
+        Await.result(db.run(schema.create), Duration.Inf)
+      }
+      catch {
+        case t : Throwable =>
+      }
     }
   }
 

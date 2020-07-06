@@ -1,9 +1,8 @@
 package net.manikin.core.context
 
-import net.manikin.core.TransObject
-
 object Store {
   import net.manikin.core.TransObject._
+  import net.manikin.core.TransObject
 
   type ID = Id[_]
   type ST = Map[ID, VObject[_]]

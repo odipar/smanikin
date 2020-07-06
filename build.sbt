@@ -2,7 +2,7 @@ name := "manikin"
 
 version := "0.1"
 
-scalaVersion := "2.13.2"
+scalaVersion := "2.13.3"
 
 libraryDependencies += "com.twitter" %% "chill" % "0.9.5"
 libraryDependencies += "com.typesafe.slick" %% "slick" % "3.3.2"

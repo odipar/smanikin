@@ -21,10 +21,8 @@ class SimpleAccountSpec extends AnyWordSpec with Matchers {
 
       a1 ! Account.Open(100)
       a2 ! Account.Open(50)
-      t1 ! Transfer.Create(a1, a2, 20)
-      t2 ! Transfer.Create(a2, a1, 30)
-      t2 ! Transfer.Book()
-      t1 ! Transfer.Book()
+      t1 ! Transfer.Book(a1, a2, 20)
+      t2 ! Transfer.Book(a2, a1, 30)
 
       a1.data.balance shouldBe 110 // 100 - 20 + 30
       a2.data.balance shouldBe 40  //  50 + 20 - 30

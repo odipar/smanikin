@@ -1,6 +1,5 @@
 package net.manikin.core.context
 
-
 object DefaultContext {
   import Store._
   import net.manikin.core.TransObject._

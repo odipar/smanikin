@@ -1,6 +1,5 @@
 package net.manikin.example.memoization
 
-
 object Fibonacci {
   import net.manikin.core.context.store.slick.postgres.PostgresStore._
   import net.manikin.core.TransObject._

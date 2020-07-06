@@ -1,11 +1,9 @@
 package net.manikin.example.bank
 
-
 object ConsistencyTest {
   import net.manikin.core.context.DefaultContext.DefaultContext
-  import net.manikin.core.context.store.InMemoryStore.InMemoryStore
-  import net.manikin.core.context.store.slick.h2.H2Store.H2Store
   import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
+  import net.manikin.core.context.store.slick.h2.H2Store.H2Store
   import net.manikin.core.context.Transactor._
   import IBAN._
   import scala.util.Random
@@ -20,15 +18,13 @@ object ConsistencyTest {
 
   def main(args: Array[String]): Unit = {
 
-    val db1 = new PostgresStore("postgres_db", 1)
-    val db2 = new PostgresStore("postgres_db", 2)
-    val db3 = new PostgresStore("postgres_db", 3)
-    val db4 = new PostgresStore("postgres_db", 4)
+    val db1 = new H2Store("h2_db", 1)
+    val db2 = new H2Store("h2_db", 2)
+    val db3 = new H2Store("h2_db", 3)
+    val db4 = new H2Store("h2_db", 4)
 
-    try { db1.createSchema() }
+    db1.tryToCreateSchema()
 
-    // val db1 = new InMemoryStore()
-    
     val t1 = Transactor(DefaultContext(db1))
     val t2 = Transactor(DefaultContext(db2))
     val t3 = Transactor(DefaultContext(db3))
@@ -37,20 +33,19 @@ object ConsistencyTest {
     var f1: Long = 0; var f2: Long =0 ; var f3: Long = 0
 
     time {
-
       // create Accounts
-    case class CreateAccounts() extends Transaction[Unit] {
-      def eff = { for (a <- 0 until nr_accounts) { Account.Id(IBAN("A" + a)) ! Account.Open(initial_amount) } }
-    }
+      case class CreateAccounts() extends Transaction[Unit] {
+        def eff = { for (a <- 0 until nr_accounts) { Account.Id(IBAN("A" + a)) ! Account.Open(initial_amount) } }
+      }
 
-    // try to commit
-    try t4.commit(TId(), CreateAccounts())
-    catch { case t: Throwable => println("t: " + t) }
+      // try to commit
+      try t4.commit(TId(), CreateAccounts())
+      catch { case t: Throwable => println("t: " + t) }
 
-    // Three concurrent 'processes'
-    val thread1 = new Thread { override def run() = { f1 = randomTransfers(t1, 0) } }
-    val thread2 = new Thread { override def run() = { f2 = randomTransfers(t2, total_transfers * 2) } }
-    val thread3 = new Thread { override def run() = { f3 = randomTransfers(t3, total_transfers * 4) } }
+      // Three concurrent 'processes'
+      val thread1 = new Thread { override def run() = { f1 = randomTransfers(t1, 0) } }
+      val thread2 = new Thread { override def run() = { f2 = randomTransfers(t2, total_transfers * 2) } }
+      val thread3 = new Thread { override def run() = { f3 = randomTransfers(t3, total_transfers * 4) } }
 
       thread1.start()
       thread2.start()
@@ -70,9 +65,7 @@ object ConsistencyTest {
 
     val sum = t4.commit(TId(), Sum())
     println("sum: " + sum)
-    //println("nr_events: " + db1.events.size)
-    //println("max_event: " + db1.events.map(x => (x._1, x._2.size)).maxBy(_._2))
-    
+
     assert((nr_accounts * initial_amount) == sum)  // A Bank should not lose money!
   }
 
@@ -81,11 +74,7 @@ object ConsistencyTest {
 
   case class RandomBatchTransfer(work: List[(Long, Account.Id, Account.Id, Long)]) extends Transaction[Unit] {
     def eff = {
-      work.foreach { x =>
-        val tid = Transfer.Id(x._1)
-        tid ! Transfer.Create(x._2, x._3, x._4)
-        tid ! Transfer.Book()
-      }
+      work.foreach { x => Transfer.Id(x._1) ! Transfer.Book(from = x._2, to = x._3, amount = x._4) }
     }
   }
 

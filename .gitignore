@@ -1,11 +1,16 @@
 .DS_Store
 .gradle/*
 .idea/*
+.metals/*
+.bloop/*
+.vscode
+.scalafmt.conf
 native
 project/target/*
 project/project/*
 target/*
 */target/*
 generated/*
+project/metals.sbt
 cockroach-data/*
 

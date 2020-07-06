@@ -18,7 +18,7 @@ object AdvancedTransfer {
   def main(args: Array[String]): Unit = {
     val store = new H2Store() // The Transactors share the same backing Store
 
-    store.createSchema()
+    store.tryToCreateSchema()
     // Two independent Contexts with associated Transactors
     val tx1 = Transactor(DefaultContext(store))
     val tx2 = Transactor(DefaultContext(store))
@@ -39,15 +39,13 @@ object AdvancedTransfer {
     
     case class T2() extends Transaction[Unit] {
       def eff = {
-        t1 ! Transfer.Create(_from = a1, _to = a2, _amount = 30)
-        t1 ! Transfer.Book()
+        t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
       }
     }
 
     case class T3() extends Transaction[Unit] {
       def eff = {
-        t2 ! Transfer.Create(_from = a1, _to = a2, _amount = 40)
-        t2 ! Transfer.Book()
+        t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
       }
     }
 

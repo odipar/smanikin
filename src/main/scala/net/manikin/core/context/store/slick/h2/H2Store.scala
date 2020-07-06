@@ -1,7 +1,5 @@
 package net.manikin.core.context.store.slick.h2
 
-import java.nio.ByteBuffer
-
 object H2Store {
   import H2Table._
   import slick.jdbc.H2Profile.api._
@@ -9,7 +7,6 @@ object H2Store {
   import net.manikin.core.context.Store._
   import net.manikin.serialization.SerializationUtils
   import SerializationUtils._
-  import com.twitter.chill.ScalaKryoInstantiator
   import slick.jdbc.TransactionIsolation
 
   import scala.concurrent.Await
@@ -24,14 +21,10 @@ object H2Store {
   // A H2 backing Store
   class H2Store(config: String = "h2_db", tx_uuid: Long = Random.nextLong) extends Store {
     val db = Database.forConfig(config)
-    val s256 = MessageDigest.getInstance("SHA-256")
+    val msgd = MessageDigest.getInstance("SHA-256")
+    val kryo = kryoInstantiator.newKryo()
+    val buffer = new Array[Byte](1024 * 1024)
     
-    val kryo = {
-      val i = new ScalaKryoInstantiator()
-      i.setRegistrationRequired(false)
-      i.newKryo()
-    }
-
     def eventQuery(i1: Rep[Long], i2: Rep[Long], i3: Rep[Long], i4: Rep[Long], version: Rep[Long]) = {
       event.filter(x => x.id_1 === i1 && x.id_2 === i2 && x.id_3 === i3 && x.id_4 === i4 && x.event_id >= version).
         sortBy(_.event_id)
@@ -51,7 +44,6 @@ object H2Store {
     val latestTransactionCompiled = Compiled(latestTransaction _)
 
     def update(state: ST): ST = {
-      val buffer = new Array[Byte](16384)
 
       state.map { x =>
         val id = x._1
@@ -63,7 +55,7 @@ object H2Store {
 
         val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.RepeatableRead)
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
-        
+
         events.foreach { evt =>
           val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._11, kryo)
           val version = evt._6
@@ -81,15 +73,13 @@ object H2Store {
 
 
     def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
-      val buffer = new Array[Byte](16384)
-
       val q = latestTransactionCompiled(tx_uuid)
 
       // Determine the next tx_id
       val max_tx_ids = Await.result(db.run(q.result), Duration.Inf)
       val tx_id = {if (max_tx_ids.isEmpty) 0L ; else max_tx_ids.head.getOrElse(0L) + 1 }
 
-      val snapshot = reads.map(x => (SerializationUtils.toBytes(x._1, buffer, kryo), x._2))
+      val snapshot = reads.map(x => (toBytes(x._1, buffer, kryo), x._2))
 
       // check whether the snapshot (versions) have been invalidated by writes (the event count must be 0)
       val checkSnapshots = snapshot.
@@ -147,14 +137,19 @@ object H2Store {
       }
     }
 
-    def createSchema(): Unit = {
-      val schema = event.schema ++ transaction.schema
-      Await.result(db.run(schema.create), Duration.Inf)
+    def tryToCreateSchema(): Unit = {
+      try {
+        val schema = event.schema ++ transaction.schema
+        Await.result(db.run(schema.create), Duration.Inf)
+      }
+      catch {
+        case t: Throwable =>
+      }
     }
 
     def sha256(b: Array[Byte]): (Long, Long, Long, Long) = {
-      s256.update(b)
-      val l = ByteBuffer.wrap(s256.digest).asLongBuffer()
+      msgd.update(b)
+      val l = java.nio.ByteBuffer.wrap(msgd.digest).asLongBuffer()
       (l.get(0), l.get(1), l.get(2), l.get(3))
     }
   }
