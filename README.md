@@ -51,11 +51,11 @@ object Account {
   import IBAN._
   
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
-  case class Data(balance: Double = 0.0)
+  case class Data(balance: Long = 0) // in cents
 
   trait Msg extends StateMessage[Data, Id, Unit]
 
-  case class Open(initial: Double) extends Msg {
+  case class Open(initial: Long) extends Msg {
     def nst = { case "Initial" => "Opened" }
     def pre = initial > 0
     def apl = data.copy(balance = initial)
@@ -63,7 +63,7 @@ object Account {
     def pst = data.balance == initial
   }
 
-  case class Withdraw(amount: Double) extends Msg {
+  case class Withdraw(amount: Long) extends Msg {
     def nst = { case "Opened" => "Opened" }
     def pre = amount > 0 && data.balance > amount
     def apl = data.copy(balance = data.balance - amount)
@@ -71,7 +71,7 @@ object Account {
     def pst = data.balance == old_data.balance - amount
   }
 
-  case class Deposit(amount: Double) extends Msg {
+  case class Deposit(amount: Long) extends Msg {
     def nst = { case "Opened" => "Opened" }
     def pre = amount > 0
     def apl = data.copy(balance = data.balance + amount)
@@ -81,33 +81,29 @@ object Account {
 }
 ```
 ```scala
-object Transfer {
-  import net.manikin.core.state.StateObject._
-  import Account._
+object SimpleTransfer {
+  import net.manikin.core.TransObject._
+  import net.manikin.core.context.DefaultContext._
+  import IBAN._
+  import scala.language.implicitConversions
 
-  case class Id      (id: Long) extends StateId[Transfer] { def initData = Transfer() }
-  case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
+  def main(args: Array[String]): Unit = {
+    implicit val ctx = DefaultContext()
 
-  trait Msg extends StateMessage[Transfer, Id, Unit] {
-    def amount = data.amount
-    def from   = data.from
-    def to     = data.to
-  }
+    val a1 = Account.Id(iban = IBAN("A1"))
+    val a2 = Account.Id(iban = IBAN("A2"))
+    val t1 = Transfer.Id(id = 1)
+    val t2 = Transfer.Id(id = 2)
 
-  case class Create(_from: Account.Id, _to: Account.Id, _amount: Double) extends Msg {
-    def nst = { case "Initial" => "Created" }
-    def pre = _amount > 0 && _from != _to
-    def apl = data.copy(from = _from, to = _to, amount = _amount)
-    def eff = { }
-    def pst = from == _from && to == _to && amount == _amount
-  }
+    a1 ! Account.Open(initial = 80)
+    a2 ! Account.Open(initial = 120)
+    t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
+    t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
 
-  case class Book() extends Msg {
-    def nst = { case "Created" => "Booked" }
-    def pre = true
-    def apl = data
-    def eff = { from ! Withdraw(data.amount) ; to ! Deposit(data.amount) }
-    def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
+    println("a1: " + ctx(a1)) // a1: StateObject(Data(10.0),Opened)
+    println("a2: " + ctx(a2)) // a2: StateObject(Data(190.0),Opened)
+    println("t1: " + ctx(t1)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
+    println("t2: " + ctx(t2)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
   }
 }
 ```
