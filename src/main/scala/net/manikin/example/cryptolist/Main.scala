@@ -7,7 +7,7 @@ object Main {
   import net.manikin.serialization.SerializationUtils._
   import scala.language.implicitConversions
 
-  // Cryptographic memoized List ('block' chain)
+  // Cryptographic List ('block' chain)
   case class ListId[+X](sha256: Seq[Byte] = digest(Nil)) extends Id[ListData[X]] {
     def init = Nil
   }
@@ -58,7 +58,7 @@ object Main {
         val l0: ListId[Nothing] = ListId()
         val l1: ListId[Int] = l0.append(1).append(2)
         val l2: ListId[Any] = l1.append(3).append("a") // co-variance
-        val l3: ListId[Int] = l0.append(1).append(2)
+        val l3: ListId[Int] = l0.append(1).append(2)   // already stored
 
         println("l1: " + l1)
         println("l2: " + l2)
