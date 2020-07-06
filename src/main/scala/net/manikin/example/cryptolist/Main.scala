@@ -16,8 +16,8 @@ object Main {
     def append[X2 >: X](x: X2) = {
       val pair = Pair(x, self)
       val id = ListId[X2](digest(pair))
-      if (id.version > 0) id    // already stored
-      else { id ! Create(pair)  // create
+      if (id.version > 0) id     // already stored
+      else { id ! Create(pair) } // create
     }
 
     def head = self.obj.head
