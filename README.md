@@ -81,29 +81,20 @@ object Account {
 }
 ```
 ```scala
-object SimpleTransfer {
-  import net.manikin.core.TransObject._
-  import net.manikin.core.context.DefaultContext._
-  import IBAN._
-  import scala.language.implicitConversions
+object Transfer {
+  import net.manikin.core.state.StateObject._
 
-  def main(args: Array[String]): Unit = {
-    implicit val ctx = DefaultContext()
+  case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
+  case class Data(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
 
-    val a1 = Account.Id(iban = IBAN("A1"))
-    val a2 = Account.Id(iban = IBAN("A2"))
-    val t1 = Transfer.Id(id = 1)
-    val t2 = Transfer.Id(id = 2)
+  trait Msg extends StateMessage[Data, Id, Unit]
 
-    a1 ! Account.Open(initial = 80)
-    a2 ! Account.Open(initial = 120)
-    t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
-    t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
-
-    println("a1: " + ctx(a1)) // a1: StateObject(Data(10.0),Opened)
-    println("a2: " + ctx(a2)) // a2: StateObject(Data(190.0),Opened)
-    println("t1: " + ctx(t1)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
-    println("t2: " + ctx(t2)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
+  case class Book(from: Account.Id, to: Account.Id, amount: Long) extends Msg {
+    def nst = { case "Initial" => "Booked" }
+    def pre = amount > 0 && from != to
+    def apl = data.copy(from = from, to = to, amount = amount)
+    def eff = { from ! Account.Withdraw(amount) ; to ! Account.Deposit(amount) }
+    def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
   }
 }
 ```
