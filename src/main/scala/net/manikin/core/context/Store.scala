@@ -16,23 +16,24 @@ object Store {
   case class ReplayContext(sid: ID, obj: VObject[_]) extends Context {
     def apply[O](id: Id[O]): VObject[O] = { if (sid == id) obj.asInstanceOf[VObject[O]] ; else error }
     def previous[O](id: Id[O]): VObject[O] = error
-    def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = error
+    def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = error
     def failure: TransObject.Failure = null
     def retries: Int = error
     def error = sys.error("replaying")
   }
 
-  type SEND = Send[Any, _ <: Id[Any] , Any]
+  type SS[X] = Send[_ <: Id[X], X, Any]
+  type SEND = SS[Any]
 
-  trait Send[+O, I <: Id[O], +R] {
+  trait Send[I <: Id[O], O, +R] {
     def level: Int
     def vid: VId[O]
-    def message: Message[O, I, R]
+    def message: Message[I, O, R]
   }
 
-  case class ReadSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
-  case class WriteSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
-  case class FailureSend[+O, I <: Id[O], +R](level: Int, vid: VId[O], message: Message[O, I, R]) extends Send[O, I, R]
+  case class ReadSend[I <: Id[O], O, +R](level: Int, vid: VId[O], message: Message[I, O, R]) extends Send[I, O, R]
+  case class WriteSend[I <: Id[O], O, +R](level: Int, vid: VId[O], message: Message[I, O, R]) extends Send[I, O, R]
+  case class FailureSend[I <: Id[O], O, +R](level: Int, vid: VId[O], message: Message[I, O, R]) extends Send[I, O, R]
 
   case class VId[+O](version: Long, id: Id[O])
 

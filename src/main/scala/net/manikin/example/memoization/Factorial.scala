@@ -27,7 +27,7 @@ object Factorial {
     }
   }
 
-  case class Memorize(result: Long) extends StateMessage[Long, Factorial, Long] {
+  case class Memorize(result: Long) extends StateMessage[Factorial, Long, Long] {
     def arg = self.arg
 
     def nst = { case _ => "Memorized" }

@@ -72,7 +72,7 @@ object ConsistencyTest {
   }
 
   def rAmount(range: Long): Long = (Random.nextGaussian().abs * range.toDouble).round + 1
-  def rAccount(nr_accounts: Int): Account.Id = Account.Id(IBAN("A" + Random.nextInt.abs % nr_accounts))
+  def rAccount(nr_accounts: Int): Account.Id = Account.Id(IBAN("A" + Random.nextInt().abs % nr_accounts))
 
   case class RandomBatchTransfer(work: List[(Long, Account.Id, Account.Id, Long)]) extends Transaction[Unit] {
     def eff = {

@@ -14,19 +14,19 @@ object AccountHolder {
   
   case class HolderData(accounts: Set[AccountId] = Set())
 
-  trait AccountMessage extends StateMessage[AccountData, AccountId, Unit] {
+  trait AccountMessage extends StateMessage[AccountId, AccountData, Unit] {
     def accounts = data.holder.data.accounts
     def holderInvariant = accounts.forall(_.data.holder == data.holder) && accounts.map(_.data.balance).sum >= 0
 
     def invariant = data.balance >= data.minimum && holderInvariant
   }
   
-  trait HolderMessage extends StateMessage[HolderData, HolderId, Unit]
+  trait HolderMessage extends StateMessage[HolderId, HolderData, Unit]
   
   case class TransferId(id: Long) extends StateId[TransferData] { def initData = TransferData() }
   case class TransferData(from: AccountId = null, to: AccountId = null, amount: Long = 0)
 
-  trait TransferMessage extends StateMessage[TransferData, TransferId, Unit] {
+  trait TransferMessage extends StateMessage[TransferId, TransferData, Unit] {
     def amount = data.amount
     def from   = data.from
     def to     = data.to

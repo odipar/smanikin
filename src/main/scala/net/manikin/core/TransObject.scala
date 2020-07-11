@@ -14,6 +14,8 @@ object TransObject {
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
 
     def typeString = this.init.getClass.getName.replace("$", ".")
+    
+    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: Context) = ctx.send(this, msg)
   }
 
   /*
@@ -27,7 +29,7 @@ object TransObject {
    * 4) (pst)post-condition: predicate over anything, including previous states. MUST BE a pure function
   */
 
-  trait Message[+O, +I <: Id[O], +R] {
+  trait Message[+I <: Id[O], O, +R] {
     // MessageContext will be injected
     @volatile private[core] var msgContext: MessageContext[_] = _
 
@@ -39,6 +41,9 @@ object TransObject {
     def eff: R
     def pst: Boolean
 
+    def obj = self.obj
+    def old_obj = self.old_obj
+    
     def _retries_ : Int = context.retries
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
@@ -51,8 +56,8 @@ object TransObject {
   trait Context {
     def apply[O](id: Id[O]): VObject[O]
     def previous[O](id: Id[O]): VObject[O]
-    def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R
-
+    def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R
+    
     def retries: Int
   }
 
@@ -70,9 +75,5 @@ object TransObject {
   
   case class ExceptionFailure(t: Throwable) extends Failure {
     override def toString = "ExceptionFailure(" + t + ")"
-  }
-
-  implicit class IdSyntax[O](id: Id[O]) {
-    def ![I <: Id[O], R](msg: Message[O, I, R])(implicit ctx: Context): R = ctx.send(id, msg)
   }
 }

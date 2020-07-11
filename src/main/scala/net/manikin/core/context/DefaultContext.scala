@@ -12,44 +12,44 @@ object DefaultContext {
     protected var current: ST = HashMap()
     protected var sends: Vector[SEND] = Vector()
 
-    protected def v[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
+    protected def vobj[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
     protected def latestVersion[O](id: Id[O]): VObject[O] = VObject(0, id.init)
 
-    def previous[O](id: Id[O]): VObject[O] = v(prev.getOrElse(id, latestVersion(id)))
-    def apply[O](id: Id[O]): VObject[O] = v(current.getOrElse(id, previous(id)))
+    def previous[O](id: Id[O]): VObject[O] = vobj(prev.getOrElse(id, latestVersion(id)))
+    def apply[O](id: Id[O]): VObject[O] = vobj(current.getOrElse(id, previous(id)))
 
-    def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {
-      val old = apply(id)
-      val vid_old = VId(old.version, id)
+    def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
+      val old_obj = apply(id)
+      val old_vid = VId(old_obj.version, id)
 
-      // inject/scope new Context and 'this' into Message
+      // inject/scope MessageContext into Message
       message.msgContext = MessageContext(id, this)
 
       val oldSends = sends
-      sends = Vector[SEND]()
+      sends = Vector()
 
-      if (!message.pre) throw FailureException(PreFailed(vid_old, id.obj(this), message))
+      if (!message.pre) throw FailureException(PreFailed(old_vid, id.obj(this), message))
       else {
         val new_self = message.app
 
         val send = {
-          if (new_self == old.obj) ReadSend(level, vid_old, message)
-          else WriteSend(level, vid_old, message)
-        }
+          if (new_self == old_obj.obj) ReadSend(level, old_vid, message)
+          else WriteSend(level, old_vid, message)
+        }.asInstanceOf[SEND]
 
-        val vobject = VObject(old.version + 1, new_self)
-        current = current + (id -> vobject)
+        val new_obj = VObject(old_obj.version + 1, new_self)
+        current = current + (id -> new_obj)
 
         level = level + 1
         val result = message.eff
         level = level - 1
 
-        prev = prev + (id -> old) // reset the old version (could have been changed by the recursive eff)
+        prev = prev + (id -> old_obj) // restore the old version (could have been overwritten by the recursive eff)
 
-        if (!message.pst) throw FailureException(PostFailed(vid_old, id.obj(this), message))
+        if (!message.pst) throw FailureException(PostFailed(old_vid, id.obj(this), message))
         else {
           sends = (oldSends :+ send) ++ sends
-          prev = prev + (id -> vobject)
+          prev = prev + (id -> new_obj)
           result
         }
       }
@@ -58,6 +58,6 @@ object DefaultContext {
     def retries = 0
   }
 
-  case class PreFailed[+O, I <: Id[O], +R](id: VId[O], state: O, message: Message[O, I, R]) extends Failure
-  case class PostFailed[+O, I <: Id[O], +R](id: VId[O], state: O, message: Message[O, I, R]) extends Failure
+  case class PreFailed[+I <: Id[O], O, +R](id: VId[O], state: O, message: Message[I, O, R]) extends Failure
+  case class PostFailed[+I <: Id[O], O, +R](id: VId[O], state: O, message: Message[I, O, R]) extends Failure
 }

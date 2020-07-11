@@ -19,7 +19,7 @@ object PostgresStore {
   implicit val byteOrder: Ordering[Array[Byte]] = (x: Array[Byte], y: Array[Byte]) => java.util.Arrays.compare(x, y)
   
   // A Postgres backing Store
-  class PostgresStore(config: String = "postgres_db", tx_uuid: Long = Random.nextLong) extends Store {
+  class PostgresStore(config: String = "postgres_db", tx_uuid: Long = Random.nextLong()) extends Store {
     val db = Database.forConfig(config)
     val buffer = new Array[Byte](1024 * 1024)
     val kryo = SerializationUtils.kryoInstantiator.newKryo()
@@ -56,7 +56,7 @@ object PostgresStore {
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
 
         events.foreach { evt =>
-          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._8, kryo)
+          val msg = toObject[Message[_ <: Id[Any], Any, Any]](evt._8, kryo)
           val version = evt._3
 
           // insert context into message
@@ -141,5 +141,5 @@ object PostgresStore {
     }
   }
 
-  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[Any, _ <: Id[Any], Any])
+  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any])
 }

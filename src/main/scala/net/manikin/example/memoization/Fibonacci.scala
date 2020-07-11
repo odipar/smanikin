@@ -25,7 +25,7 @@ object Fibonacci {
     }
   }
 
-  case class Memorize(result: Long) extends StateMessage[Long, Fibonacci, Long] {
+  case class Memorize(result: Long) extends StateMessage[Fibonacci, Long, Long] {
     def arg = self.arg
 
     def nst = { case _ => "Memorized" }

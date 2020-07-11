@@ -6,7 +6,7 @@ object Transfer {
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
 
-  trait Msg extends StateMessage[Data, Id, Unit]
+  trait Msg extends StateMessage[Id, Data, Unit]
 
   case class Book(from: Account.Id, to: Account.Id, amount: Long) extends Msg {
     def nst = { case "Initial" => "Booked" }

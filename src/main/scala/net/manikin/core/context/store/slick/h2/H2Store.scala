@@ -19,7 +19,7 @@ object H2Store {
   implicit val byteOrder: Ordering[Array[Byte]] = (x: Array[Byte], y: Array[Byte]) => java.util.Arrays.compare(x, y)
 
   // A H2 backing Store
-  class H2Store(config: String = "h2_db", tx_uuid: Long = Random.nextLong) extends Store {
+  class H2Store(config: String = "h2_db", tx_uuid: Long = Random.nextLong()) extends Store {
     val db = Database.forConfig(config)
     val msgd = MessageDigest.getInstance("SHA-256")
     val kryo = kryoInstantiator.newKryo()
@@ -57,7 +57,7 @@ object H2Store {
         val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
 
         events.foreach { evt =>
-          val msg = toObject[Message[Any, _ <: Id[Any], Any]](evt._11, kryo)
+          val msg = toObject[Message[_ <: Id[Any], Any, Any]](evt._11, kryo)
           val version = evt._6
 
           // insert context into message
@@ -148,5 +148,5 @@ object H2Store {
     }
   }
 
-  case class OrderedMessage(id1: Long, id2: Long, id3: Long, id4: Long, id: Id[Any], index: Int, version: Long, level: Int, msg: Message[Any, _ <: Id[Any], Any])
+  case class OrderedMessage(id1: Long, id2: Long, id3: Long, id4: Long, id: Id[Any], index: Int, version: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any])
 }

@@ -1,13 +1,12 @@
 package net.manikin.example.bank
 
 object SimpleTransfer {
-  import net.manikin.core.TransObject._
-  import net.manikin.core.context.StoreContext._
+  import net.manikin.core.context.DefaultContext._
   import IBAN._
   import scala.language.implicitConversions
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = StoreContext()
+    implicit val ctx = new DefaultContext()
 
     val a1 = Account.Id(iban = IBAN("A1"))
     val a2 = Account.Id(iban = IBAN("A2"))

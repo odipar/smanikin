@@ -23,7 +23,7 @@ object StateObject {
   }
 
   // A StateObject goes through 'transitions' - from one abstract state to another
-  trait StateMessage[+O, +I <: StateId[O], +R] extends Message[StateObject[O], I, R] {
+  trait StateMessage[+I <: StateId[O], O, +R] extends Message[I, StateObject[O], R] {
     def state : String = self.state
     def old_state : String = self.old_state
 
@@ -41,5 +41,5 @@ object StateObject {
   }
 
   // But such transition can go wrong
-  case class NextStateException[+O, I <: Id[O], +R](id: I, vid: VObject[StateObject[O]], message: Message[O, I, R]) extends Failure
+  case class NextStateException[+I <: StateId[O], O, +R](id: I, vid: VObject[StateObject[O]], message: StateMessage[I, O, R]) extends Failure
 }

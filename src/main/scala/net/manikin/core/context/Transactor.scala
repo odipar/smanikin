@@ -8,8 +8,8 @@ object Transactor {
   // A Transactor commits to a DefaultContext. Upon failure it retries.
   case class Transactor(private var ctx: StoreContext = StoreContext()) {
     def apply[O](id: Id[O]): VObject[O] = ctx.apply(id)
-    def commit[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = commit(id, message, 3)
-    def commit[O, I <: Id[O], R](id: I, message: Message[O, I, R], retry: Int): R = {
+    def commit[I <: Id[O], O, R](id: I, message: Message[I, O, R]): R = commit(id, message, 3)
+    def commit[I <: Id[O], O, R](id: I, message: Message[I, O, R], retry: Int): R = {
       val new_context = ctx.copyThis()
 
       try {
@@ -33,7 +33,7 @@ object Transactor {
 
   case class TId(uuid: UUID = UUID.randomUUID()) extends Id[Unit] { def init: Unit = { } }
 
-  trait Transaction[+R] extends Message[Unit, TId, R] {
+  trait Transaction[+R] extends Message[TId, Unit, R] {
     def pre = true
     def app = { }
     def pst = true

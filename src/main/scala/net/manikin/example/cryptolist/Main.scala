@@ -43,13 +43,13 @@ object Main {
 
   case class Pair[+X](head: X, tail: ListId[X]) extends ListData[X]
 
-  trait ListMsg[+X, +R] extends Message[ListData[X], ListId[X], R]
+  trait ListMsg[X, +R] extends Message[ListId[X], ListData[X], R]
 
-  case class Create[+X](pair: Pair[X]) extends ListMsg[X, ListId[X]] {
+  case class Create[X](pair: Pair[X]) extends ListMsg[X, ListId[X]] {
     def pre = self.obj == Nil
     def app = pair
     def eff = self
-    def pst = self.obj != Nil && self.obj.head == pair.head && self.obj.tail == pair.tail
+    def pst = obj != Nil && obj.head == pair.head && obj.tail == pair.tail
   }
 
   def main(args: Array[String]): Unit = {
