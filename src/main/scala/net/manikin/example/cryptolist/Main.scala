@@ -3,7 +3,7 @@ package net.manikin.example.cryptolist
 object Main {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
-  import net.manikin.core.context.DefaultContext.DefaultContext
+  import net.manikin.core.context.StoreContext.StoreContext
   import net.manikin.serialization.SerializationUtils._
   import scala.language.implicitConversions
 
@@ -53,7 +53,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = DefaultContext()
+    implicit val ctx = StoreContext()
 
     val l0 = ListId()
     val l1 = l0.append(1).append(2)

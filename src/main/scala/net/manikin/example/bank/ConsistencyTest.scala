@@ -1,7 +1,9 @@
 package net.manikin.example.bank
 
+import net.manikin.serialization.SerializationUtils
+
 object ConsistencyTest {
-  import net.manikin.core.context.DefaultContext.DefaultContext
+  import net.manikin.core.context.StoreContext.StoreContext
   import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
   import net.manikin.core.context.store.slick.h2.H2Store.H2Store
   import net.manikin.core.context.Transactor._
@@ -25,14 +27,14 @@ object ConsistencyTest {
 
     db1.tryToCreateSchema()
 
-    val t1 = Transactor(DefaultContext(db1))
-    val t2 = Transactor(DefaultContext(db2))
-    val t3 = Transactor(DefaultContext(db3))
-    val t4 = Transactor(DefaultContext(db4))
+    val t1 = Transactor(StoreContext(db1))
+    val t2 = Transactor(StoreContext(db2))
+    val t3 = Transactor(StoreContext(db3))
+    val t4 = Transactor(StoreContext(db4))
     
     var f1: Long = 0; var f2: Long =0 ; var f3: Long = 0
 
-    time {
+    SerializationUtils.time {
       // create Accounts
       case class CreateAccounts() extends Transaction[Unit] {
         def eff = { for (a <- 0 until nr_accounts) { Account.Id(IBAN("A" + a)) ! Account.Open(initial_amount) } }
@@ -94,18 +96,10 @@ object ConsistencyTest {
       if ((tid % 1000) == 0) println("tx: " + tx + ": " + (tid - offset))
 
       try tx.commit(TId(), RandomBatchTransfer(work))
-      catch { case t: Throwable => /*println("t: " + t) */ ; failures += 1 }
+      catch { case t: Throwable => /*println("t: " + t)*/  ; failures += 1 }
 
     }
     failures
   }
-
-  def time[R](block: => R): R = {
-    val t0 = System.currentTimeMillis()
-    val result = block
-    val t1 = System.currentTimeMillis()
-    val tm = ((t1 - t0) * 100).toDouble / 100000.toDouble
-    println("Elapsed time: " + tm + "s")
-    result
-  }
+  
 }

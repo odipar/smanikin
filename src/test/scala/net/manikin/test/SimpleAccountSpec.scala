@@ -7,12 +7,12 @@ class SimpleAccountSpec extends AnyWordSpec with Matchers {
   import net.manikin.example.bank.Account
   import net.manikin.example.bank.Transfer
   import net.manikin.example.bank.IBAN._
-  import net.manikin.core.context.DefaultContext.DefaultContext
+  import net.manikin.core.context.StoreContext.StoreContext
 
   "Accounts should" should {
 
     "accept two valid Transfers in the same Context" in {
-      implicit val ctx = DefaultContext()
+      implicit val ctx = StoreContext()
 
       val a1 = Account.Id(IBAN("A1"))
       val a2 = Account.Id(IBAN("A2"))

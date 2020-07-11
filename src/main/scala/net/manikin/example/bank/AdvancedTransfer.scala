@@ -6,7 +6,7 @@ import net.manikin.core.context.store.slick.h2.H2Store.H2Store
 object AdvancedTransfer {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
-  import net.manikin.core.context.DefaultContext._
+  import net.manikin.core.context.StoreContext._
   import net.manikin.core.context.store.InMemoryStore._
   import scala.collection.immutable.SortedSet
   import net.manikin.core.context.store.InMemoryStore
@@ -20,8 +20,8 @@ object AdvancedTransfer {
 
     store.tryToCreateSchema()
     // Two independent Contexts with associated Transactors
-    val tx1 = Transactor(DefaultContext(store))
-    val tx2 = Transactor(DefaultContext(store))
+    val tx1 = Transactor(StoreContext(store))
+    val tx2 = Transactor(StoreContext(store))
 
     // Set up identifiers
     val a1 = Account.Id(iban = IBAN("A1"))

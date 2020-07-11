@@ -37,4 +37,13 @@ object SerializationUtils {
   def toObject[X](b: Array[Byte], kryo: KryoBase= kryoInstantiator.newKryo()): X = {
     kryo.readClassAndObject(new Input(b)).asInstanceOf[X]
   }
+
+  def time[R](block: => R): R = {
+    val t0 = System.currentTimeMillis()
+    val result = block
+    val t1 = System.currentTimeMillis()
+    val tm = ((t1 - t0) * 100).toDouble / 100000.toDouble
+    println("Elapsed time: " + tm + "s")
+    result
+  }
 }

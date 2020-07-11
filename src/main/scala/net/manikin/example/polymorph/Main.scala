@@ -3,7 +3,7 @@ package net.manikin.example.polymorph
 object Main {
   import net.manikin.core.TransObject._
   import net.manikin.core.state.StateObject._
-  import net.manikin.core.context.DefaultContext.DefaultContext
+  import net.manikin.core.context.StoreContext.StoreContext
 
   trait Base {
     def item: String
@@ -59,7 +59,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val c = DefaultContext()
+    implicit val c = StoreContext()
 
     val e1: BId = EId1(1)
     val e2: BId = EId2(1)
