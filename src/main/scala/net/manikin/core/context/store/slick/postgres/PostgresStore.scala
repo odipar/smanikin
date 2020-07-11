@@ -60,8 +60,7 @@ object PostgresStore {
           val version = evt._3
 
           // insert context into message
-          msg.contextVar = ReplayContext(id, VObject(version, v_obj.obj))
-          msg.thisVar = id
+          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, v_obj.obj)))
 
           v_obj = VObject(version + 1, msg.app)
         }
@@ -71,7 +70,7 @@ object PostgresStore {
     }
 
 
-    def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
+    def commit(reads: MV, sends: Seq[SEND]): Unit = {
       val q = latestTransactionCompiled(tx_uuid)
       
       // Determine the next tx_id
@@ -87,7 +86,7 @@ object PostgresStore {
         map( rw =>
           for {
             c <- checkSnapshotCompiled(rw._1, rw._2).result
-            r <- if (c == 0) DBIO.successful({}); else DBIO.failed(new RuntimeException("snapshot invalid"))
+            r <- if (c == 0) DBIO.successful({}); else DBIO.failed(FailureException(SnapshotFailure()))
           } yield r
         )
 
@@ -102,8 +101,7 @@ object PostgresStore {
           val msg = send.message
           
           // make sure the message is cleaned from context data
-          msg.thisVar = null
-          msg.contextVar = null
+          msg.msgContext = null
 
           OrderedMessage(digest(id, buffer, kryo, msgd), id, index, send.vid.version, send.level, msg)
         }).
@@ -125,10 +123,10 @@ object PostgresStore {
       // We block for now, we may want to return a Future or better still wait for JVM fibers
       Await.ready(db.run(totalTransaction), Duration.Inf).value match {
         case Some(x) => x match {
-          case Success(_) => None
-          case Failure(x) => Some(CommitFailure(x))
+          case Success(_) =>
+          case Failure(x) => throw FailureException(CommitFailure(x))
         }
-        case None => Some(DatabaseFailure())
+        case None => throw FailureException(DatabaseFailure())
       }
     }
     

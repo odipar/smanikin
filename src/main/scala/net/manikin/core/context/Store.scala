@@ -10,7 +10,7 @@ object Store {
 
   trait Store {
     def update(state: ST): ST
-    def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure]
+    def commit(reads: MV, sends: Seq[SEND]): Unit
   }
 
   case class ReplayContext(sid: ID, obj: VObject[_]) extends Context {
@@ -36,7 +36,7 @@ object Store {
 
   case class VId[+O](version: Long, id: Id[O])
 
-  trait StoreFailure
+  trait StoreFailure extends Failure
   case class SnapshotFailure() extends StoreFailure
   case class DatabaseFailure() extends StoreFailure
   case class CommitFailure(t: Throwable) extends StoreFailure {

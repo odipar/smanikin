@@ -23,8 +23,7 @@ object InMemoryStore {
             val msg = evt(v_obj.version).message
 
             // inject replay context and this
-            msg.thisVar = id
-            msg.contextVar = ReplayContext(id, v_obj)
+            msg.msgContext = MessageContext(id, ReplayContext(id, v_obj))
 
             // apply event
             v_obj = VObject(v_obj.version + 1, msg.app)
@@ -37,16 +36,14 @@ object InMemoryStore {
 
     val empty = Map[Long, SEND]()
 
-    def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
+    def commit(reads: MV, sends: Seq[SEND]): Unit = {
       this.synchronized { // atomic
 
         var snap = events;
 
         // check if the snapshot has been invalidated by other writes
         reads.foreach {
-          r => {
-            if (snap.getOrElse(r._1, empty).contains(r._2)) return Some(SnapshotFailure())
-          }
+          r => if (snap.getOrElse(r._1, empty).contains(r._2)) throw FailureException(SnapshotFailure())
         }
 
         // write events
@@ -61,8 +58,6 @@ object InMemoryStore {
         }
 
         events = snap
-
-        None
       }
     }
   }

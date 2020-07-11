@@ -11,10 +11,9 @@ object DefaultContext {
   case class DefaultContext(private val store: Store = new InMemoryStore()) extends Context with Cloneable {
     private var level = 0
     private var retries_ = 0
-    private var failure_ : Failure = _
     private var state: ST = HashMap()
-    private var reads : ST = HashMap()
-    private var writes : ST = HashMap()
+    private var prev: ST = HashMap()
+    private var current: ST = HashMap()
     private var sends: Vector[SEND] = Vector()
 
     def retries = retries_
@@ -27,86 +26,63 @@ object DefaultContext {
       old != updated   // return whether anything got updated (no retries needed if not)
     }
 
-    private def sub_state: ST = reads.keySet.map(id => (id, state(id))).toMap
-
-    def failure: Failure = failure_
+    private def sub_state: ST = prev.keySet.map(id => (id, state(id))).toMap
 
     def commit(): Unit = {
       val write_origins = sends.groupBy(x => x.vid.id).map(x => (x._1, x._2.map(x => x.vid.version).min))
-      val result = store.commit(reads.map(x => (x._1, x._2.version)) ++ write_origins, sends)
-
-      if (result.isEmpty) {
-        state = state ++ writes
-        reads = HashMap()
-        writes = HashMap()
-        sends = Vector()
-        failure_ = null
-        retries_ = 0
-      }
-      else throw CommitFailureException(result.get)
+      // prev versions are superseded by write origin versions
+      store.commit(prev.map(x => (x._1, x._2.version)) ++ write_origins, sends)
+      
+      state = state ++ current
+      prev = HashMap()
+      current = HashMap()
+      sends = Vector()
+      retries_ = 0
     }
 
-    def previous[O](id: Id[O]): VObject[O] = {
-      reads.getOrElse(id, { updateFromStore(id) ; previous(id) }).asInstanceOf[VObject[O]]
+    private def v[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
+    private def updateFromStore[O](id: Id[O]): VObject[O] = {
+      val upd = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+      prev = prev ++ upd
+      v(upd(id))
     }
-
-    def apply[O](id: Id[O]): VObject[O] = {
-      writes.getOrElse(id, reads.getOrElse(id, { updateFromStore(id) ; apply(id) })).asInstanceOf[VObject[O]]
-    }
-
-    private def updateFromStore[O](id: Id[O]): Unit = {
-      val update = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
-      reads = reads ++ update
-      state = state ++ update
-    }
+    
+    def previous[O](id: Id[O]): VObject[O] = v(prev.getOrElse(id, updateFromStore(id)))
+    def apply[O](id: Id[O]): VObject[O] = v(current.getOrElse(id, previous(id)))
     
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R = {
       val old = apply(id)
       val vid_old = VId(old.version, id)
 
       // inject/scope new Context and 'this' into Message
-      message.thisVar = id
-      message.contextVar = this
+      message.msgContext = MessageContext(id, this)
 
       val oldSends = sends
       sends = Vector[SEND]()
 
-      try {
-        if (message.pre) {
+      if (!message.pre) throw FailureException(PreFailed(vid_old, id.obj(this), message))
+      else {
+        val new_self = message.app
 
-          val new_self = message.app
-
-          val send = {
-            if (new_self == old.obj) ReadSend(level, vid_old, message)
-            else WriteSend(level, vid_old, message)
-          }
-
-          val vobject = VObject(old.version + 1, new_self)
-          writes = writes + (id -> vobject)
-
-          level = level + 1
-          val result = message.eff
-          level = level - 1
-
-          if (message.pst) {
-            sends = (oldSends :+ send) ++ sends
-            reads = reads + (id -> vobject)
-            result
-          }
-          else throw FailureException(PostFailed(vid_old, id.obj(this), message))
+        val send = {
+          if (new_self == old.obj) ReadSend(level, vid_old, message)
+          else WriteSend(level, vid_old, message)
         }
-        else throw FailureException(PreFailed(vid_old, id.obj(this), message))
-      }
-      catch {
-        case e: Throwable => {
-          e match {
-            case FailureException(f) => failure_ = f
-            case _ => failure_ = ExceptionFailure(e)
-          }
 
-          sends = (oldSends :+ FailureSend(level, vid_old, message)) ++ sends
+        val vobject = VObject(old.version + 1, new_self)
+        current = current + (id -> vobject)
 
-          throw e
+        level = level + 1
+        val result = message.eff
+        level = level - 1
+        
+        prev = prev + (id -> old) // reset the old version (could have been changed by the recursive eff)
+
+        if (!message.pst) throw FailureException(PostFailed(vid_old, id.obj(this), message))
+        else {
+          sends = (oldSends :+ send) ++ sends
+          prev = prev + (id -> vobject)
+          result
         }
       }
     }

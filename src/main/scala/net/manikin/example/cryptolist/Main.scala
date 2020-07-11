@@ -8,16 +8,17 @@ object Main {
   import scala.language.implicitConversions
 
   // Cryptographic List ('block' chain)
-  case class ListId[+X](sha256: Seq[Byte] = digest(Nil)) extends Id[ListData[X]] {
+  case class ListId[+X](sha256: Seq[Byte] = digest(Nil).toIndexedSeq) extends Id[ListData[X]] {
     def init = Nil
   }
 
   implicit class ListOps[+X](self: ListId[X])(implicit c: Context) {
     def append[X2 >: X](x: X2) = {
       val pair = Pair(x, self)
-      val id = ListId[X2](digest(pair))
+      val id = ListId[X2](digest(pair).toIndexedSeq)
+
       if (id.version > 0) id     // already stored
-      else { id ! Create(pair) } // create
+      else id ! Create(pair)     // create
     }
 
     def head = self.obj.head
@@ -52,29 +53,25 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
+    implicit val ctx = DefaultContext()
 
-    object T1 extends Transaction[Unit] {
-      def eff = {
-        val l0: ListId[Nothing] = ListId()
-        val l1: ListId[Int] = l0.append(1).append(2)
-        val l2: ListId[Any] = l1.append(3).append("a") // co-variance
-        val l3: ListId[Int] = l0.append(1).append(2)   // already stored
+    val l0 = ListId()
+    val l1 = l0.append(1).append(2)
+    val l2 = l1.append(3).append("a")
+    val l3 = l0.append(1).append(2)   // already stored
 
-        println("l1: " + l1)
-        println("l2: " + l2)
-        println("l3: " + l3)
+    println("l1: " + l1)
+    println("l2: " + l2)
+    println("l3: " + l3)
 
-        println("l1: " + l1.asString)
-        println("l2: " + l2.asString)
-        println("l3: " + l3.asString)
+    println("l1: " + l1.asString)
+    println("l2: " + l2.asString)
+    println("l3: " + l3.asString)
 
-        println("l2.head: " + l2.head)
-      }
-    }
-
-    val ctx = DefaultContext()
-
-    (TId() ! T1)(ctx)
-
+    val i1: Int = l1.head
+    val i2: Any = l2.head // covariance (Int | String => Any)
+    
+    println("i1: " + i1)
+    println("i2: " + i2)
   }
 }

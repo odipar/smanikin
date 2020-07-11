@@ -61,8 +61,7 @@ object H2Store {
           val version = evt._6
 
           // insert context into message
-          msg.contextVar = ReplayContext(id, VObject(version, v_obj.obj))
-          msg.thisVar = id
+          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, v_obj.obj)))
 
           v_obj = VObject(version + 1, msg.app)
         }
@@ -72,7 +71,7 @@ object H2Store {
     }
 
 
-    def commit(reads: MV, sends: Seq[SEND]): Option[StoreFailure] = {
+    def commit(reads: MV, sends: Seq[SEND]): Unit = {
       val q = latestTransactionCompiled(tx_uuid)
 
       // Determine the next tx_id
@@ -89,7 +88,7 @@ object H2Store {
           val isha = sha256(rw._1)
           for {
             c <- checkSnapshotCompiled(isha._1, isha._2, isha._3, isha._4, rw._2).result
-            r <- if (c == 0) DBIO.successful({}); else DBIO.failed(new RuntimeException("snapshot invalid"))
+            r <- if (c == 0) DBIO.successful({}); else DBIO.failed(FailureException(SnapshotFailure()))
           } yield r
         }
 
@@ -104,8 +103,7 @@ object H2Store {
           val msg = send.message
 
           // make sure the message is cleaned from context data
-          msg.thisVar = null
-          msg.contextVar = null
+          msg.msgContext = null
 
           val isha = sha256(toBytes(id, buffer, kryo))
           OrderedMessage(isha._1, isha._2, isha._3, isha._4, id, index, send.vid.version, send.level, msg)
@@ -128,12 +126,10 @@ object H2Store {
       // We block for now, we may want to return a Future or better still wait for JVM fibers
       Await.ready(db.run(totalTransaction), Duration.Inf).value match {
         case Some(x) => x match {
-          case Success(_) => {
-            None
-          }
-          case Failure(x) => Some(CommitFailure(x))
+          case Success(_) =>
+          case Failure(x) => throw FailureException(CommitFailure(x))
         }
-        case None => Some(DatabaseFailure())
+        case None => throw FailureException(DatabaseFailure())
       }
     }
 
@@ -142,9 +138,7 @@ object H2Store {
         val schema = event.schema ++ transaction.schema
         Await.result(db.run(schema.create), Duration.Inf)
       }
-      catch {
-        case t: Throwable =>
-      }
+      catch { case t: Throwable => }
     }
 
     def sha256(b: Array[Byte]): (Long, Long, Long, Long) = {

@@ -9,7 +9,7 @@ object ConsistencyTest {
   import scala.util.Random
   import scala.language.implicitConversions
 
-  val nr_accounts = 10000
+  val nr_accounts = 1000
   val nr_batches = 1000
   val batch_size = 10
   val initial_amount = 1000L

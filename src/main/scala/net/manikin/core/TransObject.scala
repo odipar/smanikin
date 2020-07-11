@@ -28,12 +28,11 @@ object TransObject {
   */
 
   trait Message[+O, +I <: Id[O], +R] {
-    // context and this will be injected
-    @volatile private[core] var thisVar: Id[_] = _ // vars cannot be covariant, so hack it
-    @volatile private[core] var contextVar: Context = _
+    // MessageContext will be injected
+    @volatile private[core] var msgContext: MessageContext[_] = _
 
-    implicit def context: Context = contextVar
-    def self: I = thisVar.asInstanceOf[I]
+    implicit def context: Context = msgContext.context
+    def self: I = msgContext.id.asInstanceOf[I]
 
     def pre: Boolean
     def app: O
@@ -43,7 +42,7 @@ object TransObject {
     def _retries_ : Int = context.retries
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
-
+  
   /*
    * A Context acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
    * To send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
@@ -55,8 +54,9 @@ object TransObject {
     def send[O, I <: Id[O], R](id: I, message: Message[O, I, R]): R
 
     def retries: Int
-    def failure: Failure
   }
+
+  case class MessageContext[+O](id: Id[O], context: Context)
 
   // Objects are versioned by Contexts
   case class VObject[+O](version: Long, obj: O)
