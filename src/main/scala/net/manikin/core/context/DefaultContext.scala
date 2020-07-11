@@ -32,7 +32,6 @@ object DefaultContext {
       val write_origins = sends.groupBy(x => x.vid.id).map(x => (x._1, x._2.map(x => x.vid.version).min))
       // prev versions are superseded by write origin versions
       store.commit(prev.map(x => (x._1, x._2.version)) ++ write_origins, sends)
-      
       state = state ++ current
       prev = HashMap()
       current = HashMap()
@@ -42,9 +41,8 @@ object DefaultContext {
 
     private def v[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
     private def updateFromStore[O](id: Id[O]): VObject[O] = {
-      val upd = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
-      prev = prev ++ upd
-      v(upd(id))
+      prev = prev ++ store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+      previous(id)
     }
     
     def previous[O](id: Id[O]): VObject[O] = v(prev.getOrElse(id, updateFromStore(id)))
