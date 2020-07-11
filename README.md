@@ -18,13 +18,12 @@ Additionally, Manikin reduces the amount of boilerplate code, by minimal use of 
 Here is a simple Bank Transfer example, written in the Manikin DSL:
 ```scala
 object SimpleTransfer {
-  import net.manikin.core.TransObject._
   import net.manikin.core.context.DefaultContext._
   import IBAN._
   import scala.language.implicitConversions
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = DefaultContext()
+    implicit val ctx = new DefaultContext()
 
     val a1 = Account.Id(iban = IBAN("A1"))
     val a2 = Account.Id(iban = IBAN("A2"))
@@ -51,7 +50,7 @@ object Account {
   case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
   case class Data(balance: Long = 0) // in cents
 
-  trait Msg extends StateMessage[Data, Id, Unit]
+  trait Msg extends StateMessage[Id, Data, Unit]
 
   case class Open(initial: Long) extends Msg {
     def nst = { case "Initial" => "Opened" }
@@ -85,7 +84,7 @@ object Transfer {
   case class Id  (id: Long) extends StateId[Data] { def initData = Data() }
   case class Data(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
 
-  trait Msg extends StateMessage[Data, Id, Unit]
+  trait Msg extends StateMessage[Id, Data, Unit]
 
   case class Book(from: Account.Id, to: Account.Id, amount: Long) extends Msg {
     def nst = { case "Initial" => "Booked" }
