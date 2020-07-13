@@ -7,7 +7,7 @@ object MutableValue {
     // mimicking this.copy(...) on non-case class
     def copy(ff: (this.type => Unit)* ): this.type = {
       val cp = clone().asInstanceOf[this.type]
-      ff.foreach{_(cp)}
+      ff.foreach(_(cp))
       cp
     }
     
