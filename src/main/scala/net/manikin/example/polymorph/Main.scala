@@ -30,7 +30,7 @@ object Main {
   }
 
   case class SetNameB(override val name: String) extends SetName[BData](name) {
-    override def pre = super.pre || name.length > 1
+    override def pre = super.pre && name.length > 1
   }
 
   case class SetAddress(address: String) extends SetMessage[AData] {
