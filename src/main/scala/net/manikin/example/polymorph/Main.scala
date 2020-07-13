@@ -5,20 +5,33 @@ object Main {
   import net.manikin.core.context.DefaultContext._
   import net.manikin.core.MutableValue._
 
-  abstract class ID[+O <: Data](val id: Long) extends Id[O] {
-    def setName(name: String)(implicit c: Context) = this ! new SetName[O](name)
+
+  trait ID[+O <: Data] extends Id[O] {
+    val id: Long
+    def setName(name: String)(implicit c: Context): Unit = this ! new SetName[O](name)
   }
 
-  case class IdA(override val id: Long) extends ID[AData](id) {
+
+  trait Id_A[+O <: AData] extends ID[O] {
+    def setAddress(address: String)(implicit c: Context): Unit = this ! SetAddress(address)
+  }
+
+  case class IdA(id: Long) extends Id_A[AData] {
     def init = new AData{}
   }
 
-  case class IdB(override val id: Long) extends ID[BData](id) {
-    def init = new BData{}
-    override def setName(name: String)(implicit c: Context) = this ! SetNameB(name)
+  trait Id_B[+O <: BData] extends ID[O] {
+    override def setName(name: String)(implicit c: Context): Unit = this ! SetNameB(name)
+    def setAge(age: Long)(implicit c: Context): Unit = this ! SetAge(age)
   }
 
-  case class IdAB(override val id: Long) extends ID[ABData](id) {
+  case class IdB(id: Long) extends Id_B[BData] {
+    def init = new BData{}
+  }
+
+  trait Id_AB[+O <: ABData] extends ID[O] with Id_A[O] with Id_B[O]
+
+  case class IdAB(id: Long) extends Id_AB[ABData] {
     def init = new ABData{}
   }
 
@@ -68,18 +81,18 @@ object Main {
     val a = IdA(1)
     val b = IdB(1)
     val ab = IdAB(1)
+    
+    a.setName(name = "name1")
+    a.setAddress(address = "US")
 
-    a.setName("name1")
-    a ! SetAddress("US")
+    b.setName(name = "name2")
+    b.setAge(age = 10)
 
-    b.setName("name2")
-    b ! SetAge(10)
+    ab.setName(name ="name3")
+    ab.setAddress(address ="US")
+    ab.setAge(age = 10)
 
-    ab.setName("name3")
-    ab ! SetAddress("US")
-    ab ! SetAge(10)
-
-    //b ! SetAddress("US") // DOESN'T COMPILE
+    //b.setAddress("US") // DOESN'T COMPILE
     
     println("a: " + ctx(a))
     println("b: " + ctx(b))
