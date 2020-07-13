@@ -6,8 +6,7 @@ object Main {
   import net.manikin.core.MutableValue._
 
   abstract class ID[+O <: Data](val id: Long) extends Id[O] {
-    def setName(name: String)(implicit c: Context) = this ! SetName(name)
-    def sName(name: String) = SetName(name)
+    def setName(name: String)(implicit c: Context) = this ! new SetName[O](name)
   }
 
   case class IdA(override val id: Long) extends ID[AData](id) {
@@ -41,15 +40,13 @@ object Main {
     def eff = { }
   }
 
-  abstract class AbstractSetName[O <: Data](val name: String) extends SetMessage[O] {
+  class SetName[O <: Data](val name: String) extends SetMessage[O] {
     def pre = name != null && name.nonEmpty
     def app = obj.copy(_.name = name)
     def pst = obj.name == name
   }
 
-  case class SetName(override val name: String) extends AbstractSetName[Data](name)
-
-  case class SetNameB(override val name: String) extends AbstractSetName[BData](name) {
+  case class SetNameB(override val name: String) extends SetName[BData](name) {
     override def pre = super.pre || name.length > 1
   }
 
@@ -71,11 +68,11 @@ object Main {
     val a = IdA(1)
     val b = IdB(1)
     val ab = IdAB(1)
-    
-    a ! a.sName("name1")
+
+    a.setName("name1")
     a ! SetAddress("US")
 
-    b ! b.sName("name2")
+    b.setName("name2")
     b ! SetAge(10)
 
     ab.setName("name3")
