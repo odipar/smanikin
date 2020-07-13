@@ -63,7 +63,7 @@ object Main {
 
   trait Id_B extends ID[BData] {
     def setAge(age: Long)(implicit c: C): Unit = this ! SetAge(age)
-    override def setName(name: String)(implicit c: Context): Unit = this ! SetNameB(name)
+    override def setName(name: String)(implicit c: C): Unit = this ! SetNameB(name)
   }
 
   case class IdB(id: Long) extends Id_B {
