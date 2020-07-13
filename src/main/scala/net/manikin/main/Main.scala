@@ -4,6 +4,4 @@ object Main {
 
   import scala.language.implicitConversions
 
-
-
 }

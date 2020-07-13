@@ -1,5 +1,7 @@
 package net.manikin.core
 
+import net.manikin.core.TransObject.Id
+
 object TransObject {
   import scala.language.implicitConversions
   
@@ -14,10 +16,10 @@ object TransObject {
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
 
     def typeString = this.init.getClass.getName.replace("$", ".")
-    
-    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: Context) = ctx.send(this, msg)
-  }
 
+    def ![I <: Id[O2], O2 >: O, R](msg: Message[I, O2, R])(implicit ctx: Context) = ctx.send(this, msg)
+  }
+  
   /*
    * A Message can be sent to an Object O with address Id, returning R
    *
