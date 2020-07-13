@@ -5,36 +5,6 @@ object Main {
   import net.manikin.core.context.DefaultContext._
   import net.manikin.core.MutableValue._
 
-
-  trait ID[+O <: Data] extends Id[O] {
-    val id: Long
-    def setName(name: String)(implicit c: Context): Unit = this ! new SetName[O](name)
-  }
-
-
-  trait Id_A extends ID[AData] {
-    def setAddress(address: String)(implicit c: Context): Unit = this ! SetAddress(address)
-  }
-
-  case class IdA(id: Long) extends Id_A {
-    def init = new AData{}
-  }
-
-  trait Id_B extends ID[BData] {
-    def setAge(age: Long)(implicit c: Context): Unit = this ! SetAge(age)
-    override def setName(name: String)(implicit c: Context): Unit = this ! SetNameB(name)
-  }
-
-  case class IdB(id: Long) extends Id_B {
-    def init = new BData{}
-  }
-
-  trait Id_AB extends ID[ABData] with Id_A with Id_B
-
-  case class IdAB(id: Long) extends Id_AB {
-    def init = new ABData{}
-  }
-
   trait Data extends MValue {
     var name: String = ""
   }
@@ -75,6 +45,37 @@ object Main {
     def pst = obj.age == age
   }
 
+  trait ID[+O <: Data] extends Id[O] {
+    type C = Context
+    
+    val id: Long
+    def setName(name: String)(implicit c: C): Unit = this ! new SetName[O](name)
+  }
+
+
+  trait Id_A extends ID[AData] {
+    def setAddress(address: String)(implicit c: C): Unit = this ! SetAddress(address)
+  }
+
+  case class IdA(id: Long) extends Id_A {
+    def init = new AData{}
+  }
+
+  trait Id_B extends ID[BData] {
+    def setAge(age: Long)(implicit c: C): Unit = this ! SetAge(age)
+    override def setName(name: String)(implicit c: Context): Unit = this ! SetNameB(name)
+  }
+
+  case class IdB(id: Long) extends Id_B {
+    def init = new BData{}
+  }
+
+  trait Id_AB extends ID[ABData] with Id_A with Id_B
+
+  case class IdAB(id: Long) extends Id_AB {
+    def init = new ABData{}
+  }
+  
   def main(args: Array[String]): Unit = {
     implicit val ctx = new DefaultContext()
 
