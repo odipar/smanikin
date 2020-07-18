@@ -20,7 +20,7 @@ object Main {
   trait ABData extends AData with BData
 
   trait SetMessage[O <: Data] extends Message[ID[O], O, Unit] {
-    def eff = { }
+    def eff = {}
   }
 
   class SetName[O <: Data](val name: String) extends SetMessage[O] {
@@ -93,7 +93,8 @@ object Main {
     ab.setAddress(address ="US")
     ab.setAge(age = 10)
 
-    //b.setAddress("US") // DOESN'T COMPILE
+    //
+    // b.setAddress("US") // DOESN'T COMPILE
     
     println("a: " + ctx(a))
     println("b: " + ctx(b))
