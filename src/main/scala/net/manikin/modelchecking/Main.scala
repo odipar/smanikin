@@ -31,8 +31,8 @@ object Main {
 
     queue.enqueue(Map())
 
-    SerializationUtils.time(
-      while(queue.nonEmpty) {
+    SerializationUtils.time {
+      while (queue.nonEmpty) {
 
         val state = queue.dequeue()
 
@@ -46,7 +46,7 @@ object Main {
               queue.enqueue(ctx.state)
             }
           }
-          catch { case t: Throwable => errors += 1 }
+          catch {case t: Throwable => errors += 1}
 
           iterations += 1
 
@@ -60,7 +60,7 @@ object Main {
           }
         }
       }
-    )
+    }
 
     println("#objects: " + objects.size)
     println("#messages: " + msgGenerator.size)
