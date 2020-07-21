@@ -65,8 +65,14 @@ object TransObject {
 
   case class MessageContext[+O](id: Id[O], context: Context)
 
-  // Objects are versioned by Contexts
-  case class VObject[+O](version: Long, obj: O)
+  // Objects are versioned by Contexts, equality is based on object content, versions are ignored.
+  final case class VObject[+O](version: Long, obj: O) {
+    override def equals(other: Any) = other match {
+      case v: VObject[O] => obj == v.obj
+      case _ => false
+    }
+    override def hashCode = obj.hashCode
+  }
 
   // Things can go wrong and that's encapsulated as type of Failure, not an Exception
   trait Failure
