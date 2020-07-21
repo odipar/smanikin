@@ -10,7 +10,7 @@ object TestContext {
     var current: Map[Id[_], VObject[_]] = Map()
 
     def state: Map[Id[_], VObject[_]] = current
-    def withState(m: Map[Id[_], VObject[_]]) = { prev = m ; current = m }
+    def withState(m: Map[Id[_], VObject[_]]): TestContext = { prev = m ; current = m ; this }
     
     def apply[O](id: Id[O]): VObject[O] = current.getOrElse(id, VObject(0, id.init)).asInstanceOf[VObject[O]]
     def previous[O](id: Id[O]): VObject[O] = prev.getOrElse(id, VObject(0, id.init)).asInstanceOf[VObject[O]]

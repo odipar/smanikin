@@ -1,5 +1,7 @@
 package net.manikin.modelchecking
 
+import net.manikin.serialization.SerializationUtils
+
 object Main {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.TestContext.TestContext
@@ -10,6 +12,7 @@ object Main {
   import scala.language.implicitConversions
 
   // Simple model checker, without trace information
+  // TODO: create DSL
   def main(args: Array[String]): Unit = {
     var iterations: Long = 0
     var cache: Long = 0
@@ -28,35 +31,36 @@ object Main {
 
     queue.enqueue(Map())
 
-    while(queue.nonEmpty) {
+    SerializationUtils.time(
+      while(queue.nonEmpty) {
 
-      val state = queue.dequeue()
+        val state = queue.dequeue()
 
-      for (i <- msgGenerator.indices) {
-        try {
-          ctx.withState(state)
-          msgGenerator(i)(ctx)
+        for (i <- msgGenerator.indices) {
+          try {
+            msgGenerator(i)(ctx.withState(state))
 
-          if (seen.contains(ctx.state)) cache += 1
-          else {
-            seen.add(ctx.state)
-            queue.enqueue(ctx.state)
+            if (seen.contains(ctx.state)) cache += 1
+            else {
+              seen.add(ctx.state)
+              queue.enqueue(ctx.state)
+            }
+          }
+          catch { case t: Throwable => errors += 1 }
+
+          iterations += 1
+
+          if ((iterations % 1000000) == 0) {
+            println("#iterations: " + iterations)
+            println("#queue: " + queue.size)
+            println("#unique states: " + seen.size)
+            println("#cache: " + cache)
+            println("#errors: " + errors)
+            println()
           }
         }
-        catch { case t: Throwable => errors += 1 }
-
-        iterations += 1
-
-        if ((iterations % 1000000) == 0) {
-          println("#queue: " + queue.size)
-          println("#iterations: " + iterations)
-          println("#unique states: " + seen.size)
-          println("#cache: " + cache)
-          println("#errors: " + errors)
-          println()
-        }
       }
-    }
+    )
 
     println("#objects: " + objects.size)
     println("#messages: " + msgGenerator.size)
@@ -76,11 +80,10 @@ object Main {
     val ctx = TestContext()
 
     states.forall { state =>
-      ctx.withState(state)
-
+      
       val opened_and_closed = state.keys.toSeq.
         filter(_.isInstanceOf[Account.Id]).
-        map(x => ctx(x.asInstanceOf[Account.Id]).obj).
+        map(x => ctx.withState(state)(x.asInstanceOf[Account.Id]).obj).
         filter(obj => obj.state == "Opened" || obj.state == "Closed")
 
       opened_and_closed.map(x => x.data.balance).sum == (opened_and_closed.size * initialAmount)
