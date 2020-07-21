@@ -63,6 +63,10 @@ object TransObject {
     def retries: Int
   }
 
+  type ID = Id[_]
+  type ST = Map[ID, VObject[_]]
+  type MV = Map[ID, Long]
+  
   case class MessageContext[+O](id: Id[O], context: Context)
 
   // Objects are versioned by Contexts, equality is based on object content, versions are ignored.

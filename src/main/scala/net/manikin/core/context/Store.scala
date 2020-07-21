@@ -4,10 +4,6 @@ object Store {
   import net.manikin.core.TransObject._
   import net.manikin.core.TransObject
 
-  type ID = Id[_]
-  type ST = Map[ID, VObject[_]]
-  type MV = Map[ID, Long]
-
   trait Store {
     def update(state: ST): ST
     def commit(reads: MV, sends: Seq[SEND]): Unit

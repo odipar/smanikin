@@ -1,73 +1,73 @@
-package net.manikin.main
+package net.manikin.modelchecking
 
 object Main {
 
-  import scala.language.implicitConversions
-  import net.manikin.example.bank.Account
-  import net.manikin.example.bank.IBAN.IBAN
-  import net.manikin.example.bank.Transfer
   import net.manikin.core.TransObject._
   import net.manikin.core.context.TestContext.TestContext
+  import net.manikin.example.bank.IBAN.IBAN
+  import net.manikin.example.bank._
+
   import scala.collection.mutable
+  import scala.language.implicitConversions
 
   def main(args: Array[String]): Unit = {
-    val accounts = (1 to 3).map(a => Account.Id(IBAN("A" + a))).toArray
-    val transfers = (1 to 4).map(t => Transfer.Id(t)).toArray
+    var iterations: Long = 0
+    var cache: Long = 0
+    var errors: Long = 0
+    
+    val accounts = (1 to 3).map(a => Account.Id(IBAN("A" + a)))
+    val transfers = (1 to 4).map(t => Transfer.Id(t))
     val objects = accounts ++ transfers
 
-    val msgGenerator = (msgSend(accounts, accountMsg) ++ msgSend(transfers, transferMsg(accounts))).toIndexedSeq
-    println("objects: " + objects)
-    println("msgGenerator.size: " + msgGenerator.size)
+    val msgGenerator = msgSend(accounts, accountMsg) ++ msgSend(transfers, transferMsg(accounts))
     
     val ctx = TestContext()
 
-    val seen = mutable.HashSet[Map[Id[_], VObject[_]]]()
-    val queue = mutable.Queue[Map[Id[_], VObject[_]]]()
+    val seen = mutable.HashSet[ST]()
+    val queue = mutable.Queue[ST]()
 
     queue.enqueue(Map())
 
-    var iters: Long = 0
-    var cache: Long = 0
-    var errors: Long = 0
-
     while(queue.nonEmpty) {
-      val state = queue.dequeue
+
+      val state = queue.dequeue()
+
       for (i <- msgGenerator.indices) {
         try {
           ctx.withState(state)
           msgGenerator(i)(ctx)
 
-          if (!seen.contains(ctx.state)) {
+          if (seen.contains(ctx.state)) cache += 1
+          else {
             seen.add(ctx.state)
             queue.enqueue(ctx.state)
           }
-          else cache += 1
         }
         catch { case t: Throwable => errors += 1 }
 
-        iters += 1
+        iterations += 1
 
-        if ((iters % 1000000) == 0) {
+        if ((iterations % 1000000) == 0) {
           println("#queue: " + queue.size)
-          println("#iterations: " + iters)
+          println("#iterations: " + iterations)
           println("#unique states: " + seen.size)
           println("#cache: " + cache)
           println("#errors: " + errors)
-          println
+          println()
         }
       }
     }
 
     println("#objects: " + objects.size)
     println("#messages: " + msgGenerator)
-    println("#iterations: " + iters)
+    println("#iterations: " + iterations)
     println("#unique states: " + seen.size)
     println("#cache: " + cache)
     println("#errors: " + errors)
   }
 
-  def msgSend[I <: Id[O], O, R](ids: Seq[I], msg: Seq[Account.Msg]): Seq[MsgSend[I, O, R]] = {
-    ids.flatMap(i => msg.map(m => MsgSend(i, m)))
+  def msgSend[I <: Id[O], O, R](ids: Seq[I], msg: Seq[Message[I, O, R]]): IndexedSeq[MsgSend[I, O, R]] = {
+    ids.flatMap(i => msg.map(m => MsgSend[I, O, R](i, m))).toIndexedSeq
   }
 
   case class MsgSend[I <: Id[O], O, +R](id: I, msg: Message[I, O, R]) {
@@ -76,11 +76,15 @@ object Main {
 
   def accountMsg: Seq[Account.Msg] = {
     val amounts = Seq(5, 10)
-    amounts.map(amt => Account.Open(amt)) :+ Account.Close() :+ Account.ReOpen()
+
+    amounts.map(amt => Account.Open(amt)) :+
+      Account.Close() :+
+      Account.ReOpen()
   }
 
   def transferMsg(accounts: Seq[Account.Id]): Seq[Transfer.Msg] = {
     val amounts = Array(1, 2)
+    
     accounts.flatMap{ a1 =>
       accounts.flatMap{ a2 =>
         amounts.map{ amt =>
