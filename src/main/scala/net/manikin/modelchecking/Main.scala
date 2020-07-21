@@ -1,15 +1,15 @@
 package net.manikin.modelchecking
 
 object Main {
-
   import net.manikin.core.TransObject._
   import net.manikin.core.context.TestContext.TestContext
-  import net.manikin.example.bank.IBAN.IBAN
   import net.manikin.example.bank._
+  import net.manikin.example.bank.IBAN.IBAN
 
   import scala.collection.mutable
   import scala.language.implicitConversions
 
+  // Simple model checker, without trace information
   def main(args: Array[String]): Unit = {
     var iterations: Long = 0
     var cache: Long = 0
@@ -59,38 +59,47 @@ object Main {
     }
 
     println("#objects: " + objects.size)
-    println("#messages: " + msgGenerator)
+    println("#messages: " + msgGenerator.size)
     println("#iterations: " + iterations)
     println("#unique states: " + seen.size)
     println("#cache: " + cache)
     println("#errors: " + errors)
+
+    println()
+    
+    println("checkNoMoneyLost: " + checkNoMoneyLostInvariant(seen))
   }
 
-  def msgSend[I <: Id[O], O, R](ids: Seq[I], msg: Seq[Message[I, O, R]]): IndexedSeq[MsgSend[I, O, R]] = {
-    ids.flatMap(i => msg.map(m => MsgSend[I, O, R](i, m))).toIndexedSeq
+  val initialAmount = 10
+  
+  def checkNoMoneyLostInvariant(states: mutable.HashSet[ST]) = {
+    val ctx = TestContext()
+
+    states.forall { state =>
+      ctx.withState(state)
+
+      val opened_and_closed = state.keys.toSeq.
+        filter(_.isInstanceOf[Account.Id]).
+        map(x => ctx(x.asInstanceOf[Account.Id]).obj).
+        filter(obj => obj.state == "Opened" || obj.state == "Closed")
+
+      opened_and_closed.map(x => x.data.balance).sum == (opened_and_closed.size * initialAmount)
+    }
+  }
+
+  def msgSend[I <: Id[O], O, R](ids: Seq[I], msg: Seq[Message[I, O, R]]) = {
+    ids.flatMap(i => msg.map(m => MsgSend(i, m))).toIndexedSeq
   }
 
   case class MsgSend[I <: Id[O], O, +R](id: I, msg: Message[I, O, R]) {
     def apply(implicit c: Context) = id ! msg
   }
 
-  def accountMsg: Seq[Account.Msg] = {
-    val amounts = Seq(5, 10)
+  def accountMsg = Seq(Account.Open(initialAmount), Account.Close(), Account.ReOpen())
 
-    amounts.map(amt => Account.Open(amt)) :+
-      Account.Close() :+
-      Account.ReOpen()
-  }
-
-  def transferMsg(accounts: Seq[Account.Id]): Seq[Transfer.Msg] = {
-    val amounts = Array(1, 2)
+  def transferMsg(accounts: Seq[Account.Id]) = {
+    val amounts = Array(1, 2, 5)
     
-    accounts.flatMap{ a1 =>
-      accounts.flatMap{ a2 =>
-        amounts.map{ amt =>
-          Transfer.Book(a1, a2, amt)
-        }
-      }
-    }
+    accounts.flatMap(a1 => accounts.flatMap(a2 => amounts.map(amt => Transfer.Book(a1, a2, amt))))
   }
 }
