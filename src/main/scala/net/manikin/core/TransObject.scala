@@ -63,13 +63,15 @@ object TransObject {
     def retries: Int
   }
 
+  // Some convenient type defs
   type ID = Id[_]
   type ST = Map[ID, VObject[_]]
   type MV = Map[ID, Long]
-  
-  case class MessageContext[+O](id: Id[O], context: Context)
 
-  // Objects are versioned by Contexts, equality is based on object content, versions are ignored.
+  // A product of an Id and a Context
+  final case class MessageContext[+O](id: Id[O], context: Context)
+
+  // Objects are versioned by Contexts. VObject equality is based solely on object content, with versions ignored.
   final case class VObject[+O](version: Long, obj: O) {
     override def equals(other: Any) = other match {
       case v: VObject[O] => obj == v.obj

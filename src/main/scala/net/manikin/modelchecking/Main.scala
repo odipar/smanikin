@@ -1,13 +1,12 @@
 package net.manikin.modelchecking
 
-import net.manikin.serialization.SerializationUtils
 
 object Main {
   import net.manikin.core.TransObject._
-  import net.manikin.core.context.TestContext.TestContext
+  import net.manikin.core.context.ObjectContext.ObjectContext
   import net.manikin.example.bank._
   import net.manikin.example.bank.IBAN.IBAN
-
+  import net.manikin.serialization.SerializationUtils
   import scala.collection.mutable
   import scala.language.implicitConversions
 
@@ -24,7 +23,7 @@ object Main {
 
     val msgGenerator = msgSend(accounts, accountMsg) ++ msgSend(transfers, transferMsg(accounts))
     
-    val ctx = TestContext()
+    val ctx = ObjectContext()
 
     val seen = mutable.HashSet[ST]()
     val queue = mutable.Queue[ST]()
@@ -40,13 +39,12 @@ object Main {
           try {
             msgGenerator(i)(ctx.withState(state))
 
+            if(!checkNoMoneyLostInvariant(ctx.state, ctx)) sys.error("Model Invariant broken")
+
             if (seen.contains(ctx.state)) cache += 1
-            else {
-              seen.add(ctx.state)
-              queue.enqueue(ctx.state)
-            }
+            else { seen.add(ctx.state) ; queue.enqueue(ctx.state) }
           }
-          catch {case t: Throwable => errors += 1}
+          catch { case t: Throwable => errors += 1 }
 
           iterations += 1
 
@@ -68,26 +66,17 @@ object Main {
     println("#unique states: " + seen.size)
     println("#cache: " + cache)
     println("#errors: " + errors)
-
-    println()
-    
-    println("checkNoMoneyLost: " + checkNoMoneyLostInvariant(seen))
   }
 
   val initialAmount = 10
-  
-  def checkNoMoneyLostInvariant(states: mutable.HashSet[ST]) = {
-    val ctx = TestContext()
 
-    states.forall { state =>
-      
-      val opened_and_closed = state.keys.toSeq.
-        filter(_.isInstanceOf[Account.Id]).
-        map(x => ctx.withState(state)(x.asInstanceOf[Account.Id]).obj).
-        filter(obj => obj.state == "Opened" || obj.state == "Closed")
+  def checkNoMoneyLostInvariant(state: ST, ctx: ObjectContext): Boolean = {
+    val opened_and_closed = state.keys.
+      filter(_.isInstanceOf[Account.Id]).
+      map(x => ctx.withState(state)(x.asInstanceOf[Account.Id]).obj).
+      filter(obj => obj.state == "Opened" || obj.state == "Closed")
 
-      opened_and_closed.map(x => x.data.balance).sum == (opened_and_closed.size * initialAmount)
-    }
+    opened_and_closed.toSeq.map(x => x.data.balance).sum == (opened_and_closed.size * initialAmount)
   }
 
   def msgSend[I <: Id[O], O, R](ids: Seq[I], msg: Seq[Message[I, O, R]]) = {

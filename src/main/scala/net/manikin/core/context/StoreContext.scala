@@ -4,12 +4,12 @@ object StoreContext {
   import Store._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.store.InMemoryStore._
-  import net.manikin.core.context.DefaultContext._
+  import net.manikin.core.context.EventContext._
   import scala.collection.immutable.HashMap
 
   // A StoreContext keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
-  case class StoreContext(private val store: Store = new InMemoryStore()) extends DefaultContext with Cloneable {
+  case class StoreContext(private val store: Store = new InMemoryStore()) extends EventContext with Cloneable {
     protected var retries_ = 0
     protected var state: ST = HashMap()
 

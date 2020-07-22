@@ -2,7 +2,7 @@ package net.manikin.example.polymorph
 
 object Main {
   import net.manikin.core.TransObject._
-  import net.manikin.core.context.DefaultContext._
+  import net.manikin.core.context.EventContext._
   import net.manikin.core.MutableValue._
 
   trait Data extends MValue {
@@ -77,7 +77,7 @@ object Main {
   }
   
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new DefaultContext()
+    implicit val ctx = new EventContext()
 
     val a = IdA(1)
     val b = IdB(1)
