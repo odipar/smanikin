@@ -7,7 +7,7 @@ object Main {
   import net.manikin.core.context.ObjectContext.ObjectContext
   import scala.util.Try
 
-  // You can easily try alternative sends that fail, because state will be rolled back to the previous valid state!
+  // You can easily try alternative sends that fail midway: state will be rolled back to the previous valid state!
   // This is very hard to do with POJOs
 
   def main(args: Array[String]): Unit = {
