@@ -18,12 +18,12 @@ Additionally, Manikin reduces the amount of boilerplate code, by minimal use of 
 Here is a simple Bank Transfer example, written in the Manikin DSL:
 ```scala
 object SimpleTransfer {
-  import net.manikin.core.context.DefaultContext._
+  import net.manikin.core.context.EventContext._
   import IBAN._
   import scala.language.implicitConversions
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new DefaultContext()
+    implicit val ctx = new EventContext()
 
     val a1 = Account.Id(iban = IBAN("A1"))
     val a2 = Account.Id(iban = IBAN("A2"))

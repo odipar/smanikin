@@ -10,7 +10,7 @@ object EventContext {
     protected var level = 0
     protected var prev: ST = HashMap()
     protected var current: ST = HashMap()
-    protected var sends: Vector[SEND] = Vector()
+    var sends: Vector[SEND] = Vector()
 
     protected def vobj[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
     protected def latestVersion[O](id: Id[O]): VObject[O] = VObject(0, id.init)
