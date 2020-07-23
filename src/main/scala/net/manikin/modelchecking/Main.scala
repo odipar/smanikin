@@ -23,7 +23,7 @@ object Main {
 
     val msgGenerator = msgSend(accounts, accountMsg) ++ msgSend(transfers, transferMsg(accounts))
     
-    val ctx = ObjectContext()
+    val ctx = new ObjectContext()
 
     val seen = mutable.HashSet[ST]()
     val queue = mutable.Queue[ST]()

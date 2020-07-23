@@ -12,7 +12,7 @@ class SimpleAccountSpec extends AnyWordSpec with Matchers {
   "Accounts should" should {
 
     "accept two valid Transfers in the same Context" in {
-      implicit val ctx = ObjectContext()
+      implicit val ctx = new ObjectContext()
 
       val a1 = Account.Id(IBAN("A1"))
       val a2 = Account.Id(IBAN("A2"))

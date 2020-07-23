@@ -5,7 +5,7 @@ object ObjectContext {
   import net.manikin.core.context.EventContext.{PostFailed, PreFailed}
   import net.manikin.core.context.Store._
 
-  case class ObjectContext() extends Context {
+  class ObjectContext() extends Context {
     var prev: Map[Id[_], VObject[_]] = Map()
     var current: Map[Id[_], VObject[_]] = Map()
 
@@ -42,8 +42,7 @@ object ObjectContext {
       }
       catch {
         case t: Throwable => {
-          // rollback
-          prev = prev + (id -> old_obj)
+          // rollbackprev = prev + (id -> old_obj)
           current = current + (id -> old_obj)
           throw t
         }

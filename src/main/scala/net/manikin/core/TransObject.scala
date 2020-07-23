@@ -16,10 +16,12 @@ object TransObject {
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
 
     def typeString = this.init.getClass.getName.replace("$", ".")
-
-    def ![I <: Id[O2], O2 >: O, R](msg: Message[I, O2, R])(implicit ctx: Context) = ctx.send(this, msg)
   }
-  
+
+  implicit class syntax[O](id: Id[O]) {
+    def ![I <: Id[O], R](msg: Message[I, O, R])(implicit ctx: Context) = ctx.send(id, msg)
+  }
+
   /*
    * A Message can be sent to an Object O with address Id, returning R
    *
