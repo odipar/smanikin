@@ -41,15 +41,11 @@ object EventContext {
           }.asInstanceOf[SEND]
 
           val new_obj = VObject(old_obj.version + 1, new_self)
-
           current = current + (id -> new_obj)
-
           level = level + 1
-
+          prev = prev + (id -> old_obj)
           val result = message.eff
-
           level = oldLevel
-
           prev = prev + (id -> old_obj)
 
           if (!message.pst) throw FailureException(PostFailed(old_vid, id.obj(this), message))

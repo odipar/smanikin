@@ -32,8 +32,8 @@ object ObjectContext {
 
           current = current + (id -> new_obj)
 
+          prev = prev + (id -> old_obj)
           val result = message.eff
-
           prev = prev + (id -> old_obj)
 
           if (!message.pst) throw FailureException(PostFailed(old_vid, id.obj(this), message))

@@ -1,38 +1,44 @@
 package net.manikin.orchestration
 
-import net.manikin.core.TransObject.{Context, Message}
-import net.manikin.core.context.Transactor.Transaction
-import net.manikin.core.state.StateObject.{StateId, StateMessage, StateObject}
-
 object Main {
-  import net.manikin.example.bank.Account
-  import net.manikin.example.bank.Transfer
-  import net.manikin.example.bank.IBAN.IBAN
   import net.manikin.core.context.ObjectContext.ObjectContext
-  import scala.util.Try
 
-  // You can easily try alternative sends that fail: state will always be rolled back to the previous valid state!
-  // This is very hard to do with POJOs
+  trait IntTask extends Process.Task[Int]
 
   def main(args: Array[String]): Unit = {
     implicit val c = new ObjectContext()
 
-    val a1 = Account.Id(IBAN("A1"))
-    val a2 = Account.Id(IBAN("A2"))
+    val s = Scheduler.Id("s1") // The Scheduler will schedule two Processes
 
-    val t1 = Transfer.Id(1)
+    val p1 = Process.Id("p1", 0) // This Process will Succeed
+    val p2 = Process.Id("p2", 1) // This Process will Fail
 
-    a1 ! Account.Open(5)
-    a2 ! Account.Open(10)
-    
-    Try ( t1 ! Transfer.Book(a1, a2, 8) ) getOrElse(   // Fails
-      Try ( t1 ! Transfer.Book(a1, a2, 7) ) getOrElse( // Fails
-        t1 ! Transfer.Book(a1, a2, 4)                  // Succeeds
-      )
-    )
+    val t1 = new IntTask { def eff = data + 1 }
+    val t2 = new IntTask { def eff = data * 2 }
+    val t3 = new IntTask { def eff = if (data == 2) data - 5; else sys.error("no") }
+    val t4 = new IntTask { def eff = data * 3 }
 
-    println(c(a1)) // VObject(2,StateObject(Data(1),Opened))
-    println(c(a2)) // VObject(2,StateObject(Data(14),Opened))
-    println(c(t1)) // VObject(1,StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),4),Booked))
+    p1 ! Process.Add(t1)
+    p1 ! Process.Add(t2)
+    p1 ! Process.Add(t3)
+    p1 ! Process.Add(t4)
+
+    p2 ! Process.Add(t1)
+    p2 ! Process.Add(t2)
+    p2 ! Process.Add(t3)
+    p2 ! Process.Add(t4)
+
+    s ! Scheduler.Add(p1)
+    s ! Scheduler.Add(p2)
+
+    while(s.obj.queue.nonEmpty) { s ! Scheduler.Do() } // just keep the Scheduler going
+
+    println("p1.state: " + p1.state) 
+    println("p1.failures: " + p1.data.failures)
+    println("p1.data.state: " + p1.data.processData)
+
+    println("p2.state: " + p2.state)
+    println("p2.failures: " + p2.data.failures)
+    println("p2.data.state: " + p2.data.processData)
   }
 }
