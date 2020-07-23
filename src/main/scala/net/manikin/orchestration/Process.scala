@@ -10,11 +10,11 @@ object Process {
     def initData = ProcessData(processData = initial)
   }
 
-  case class ProcessData[S](processData: S, step: Int = 0, failures: Int = 0, steps: Seq[Step[S]] = Seq())
+  case class ProcessData[S](processData: S, step: Int = 0, failures: Int = 0, steps: Seq[Task[S]] = Seq())
 
   trait ProcessMsg[S] extends StateMessage[ProcessId[S], ProcessData[S], S]
 
-  abstract class Step[S](name: String = "") extends Cloneable {
+  abstract class Task[S](name: String = "") extends Cloneable {
     implicit var ctx: Context = _
     var data: S = _
 
@@ -28,7 +28,7 @@ object Process {
     def eff: S
   }
 
-  case class ProcessAdd[S](s: Step[S]) extends ProcessMsg[S] {
+  case class ProcessAdd[S](s: Task[S]) extends ProcessMsg[S] {
     def nst = { case "Initial" | "Define" => "Define" }
     def pre = true
     def apl = data.copy(steps = data.steps :+ s)
@@ -41,9 +41,9 @@ object Process {
     def pre = true
     def apl = data
     def eff = {
-      def step = data.steps(data.step)
+      def task = data.steps(data.step)
 
-      Try(self ! ProcessSuccess(step(data.processData, context))) getOrElse {  // Can we apply the Step?
+      Try(self ! ProcessSuccess(task(data.processData, context))) getOrElse {  // Can we apply the Task?
         Try(self ! ProcessFailure()) getOrElse {  // No, signal Failure
           Try(self ! ProcessFailed()) getOrElse { // To many Failures, the Process has Failed
             data.processData
@@ -89,26 +89,27 @@ object Process {
   def main(args: Array[String]): Unit = {
     implicit val c = new ObjectContext()
 
-    val t1 = ProcessId("TestProcess", 0)
+    val p1 = ProcessId("p1", 0)
 
-    trait IntStep extends Step[Int]
+    trait IntTask extends Task[Int]
 
-    val s1 = new IntStep { def eff = data + 1 }
-    val s2 = new IntStep { def eff = data * 2 }
-    val s3 = new IntStep { def eff = if (data == 2) data - 5; else sys.error("no") }
-    val s4 = new IntStep { def eff = data * 3 }
+    val t1 = new IntTask { def eff = data + 1 }
+    val t2 = new IntTask { def eff = data * 2 }
+    val t3 = new IntTask { def eff = if (data == 2) data - 5; else sys.error("no") }
+    val t4 = new IntTask { def eff = data * 3 }
 
 
-    t1 ! ProcessAdd(s1)
-    t1 ! ProcessAdd(s2)
-    t1 ! ProcessAdd(s3)
-    t1 ! ProcessAdd(s4)
+    p1 ! ProcessAdd(t1)
+    p1 ! ProcessAdd(t2)
+    p1 ! ProcessAdd(t3)
+    p1 ! ProcessAdd(t4)
 
-    while(t1.state != "Done" && t1.state != "Failed") {
-      val s = t1 ! ProcessDo()
-      println("state: " + t1.state)
-      println("failures: " + t1.data.failures)
-      println("taskState: " + t1.data.processData)
+    while(p1.state != "Done" && p1.state != "Failed") {
+      p1 ! ProcessDo()
+      
+      println("state: " + p1.state)
+      println("failures: " + p1.data.failures)
+      println("taskState: " + p1.data.processData)
     }
 
   }
