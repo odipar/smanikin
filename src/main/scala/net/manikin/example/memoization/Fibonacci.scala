@@ -41,8 +41,8 @@ object Fibonacci {
   def main(args: Array[String]): Unit = {
     val store = new PostgresStore() // The Transactors share the same backing Store
 
-    val tx1 = Transactor(StoreContext(store))
-    val tx2 = Transactor(StoreContext(store))
+    val tx1 = Transactor(new StoreContext(store))
+    val tx2 = Transactor(new StoreContext(store))
 
     val r1 = tx1.commit(TId(), Calculate(Fibonacci(20))) // re-uses the internal memoized version of Fibonacci
     println("Fibonacci(20): " + r1)

@@ -81,7 +81,7 @@ object AccountHolder {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = StoreContext()
+    implicit val ctx = new StoreContext()
 
     val h1 = HolderId("h1")
     val h2 = HolderId("h2")

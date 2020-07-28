@@ -46,9 +46,9 @@ object Process {
     def eff = {
       def task = data.steps(data.step)
 
-      Try(self ! Success(task(data.processData, context))) getOrElse {  // Can we process the Task?
-        Try(self ! Failure()) getOrElse {                               // No, send Failure
-          Try(self ! Failed()) getOrElse {                              // Failure fails, the Process has Failed
+      Try( self ! Success[S](task(data.processData, context)) ) getOrElse {  // Can we process the Task?
+        Try( self ! Failure[S]() ) getOrElse {                               // No, send Failure
+          Try( self ! Failed[S]() ) getOrElse {                              // Failure fails, the Process has Failed
             data.processData
           }
         }
@@ -61,7 +61,7 @@ object Process {
     def nst = { case "Running" => "Running" }
     def pre = true
     def apl = data.copy(processData = s, step = data.step + 1)
-    def eff = if (data.step >= data.steps.size) self ! Done() ; else data.processData
+    def eff = if (data.step >= data.steps.size) self ! Done[S]() ; else data.processData
     def pst = true
   }
 

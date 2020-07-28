@@ -53,7 +53,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = StoreContext()
+    implicit val ctx = new StoreContext()
 
     val l0 = ListId()
     val l1 = l0.append(1).append(2)

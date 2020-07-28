@@ -9,25 +9,25 @@ object Scheduler {
     def init = Data()
   }
 
-  case class Data(queue: Queue[Process.Id[_]] = Queue())
+  case class Data(queue: Queue[Process.Id[Any]] = Queue())
 
-  trait SchedulerMsg extends TransObject.Message[Id, Data, Unit]
+  trait SchedulerMsg[+R] extends TransObject.Message[Id, Data, R]
 
-  case class Add(p: Process.Id[_]) extends SchedulerMsg {
+  case class Add(p: Process.Id[Any]) extends SchedulerMsg[Unit] {
     def pre = true
     def app = obj.copy(queue = obj.queue.enqueue(p))
     def eff = { }
     def pst = obj.queue == old_obj.queue.enqueue(p)
   }
 
-  case class Do() extends SchedulerMsg {
+  case class Do() extends SchedulerMsg[Unit] {
     def pre = obj.queue.nonEmpty
     def app = obj.copy(queue = obj.queue.dequeue._2)
     def eff = {
       val p = old_obj.queue.dequeue._1
 
       if (!(p.state == "Done" || p.state == "Failed")) {
-        p ! Process.Do()
+        p ! Process.Do[Any]()
         self ! Add(p) // Reschedule
       }
     }

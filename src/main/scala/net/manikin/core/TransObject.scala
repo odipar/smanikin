@@ -16,10 +16,8 @@ object TransObject {
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
 
     def typeString = this.init.getClass.getName.replace("$", ".")
-  }
 
-  implicit class syntax[O](id: Id[O]) {
-    def ![I <: Id[O], R](msg: Message[I, O, R])(implicit ctx: Context) = ctx.send(id, msg)
+    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: Context) = ctx.send(this, msg)
   }
 
   /*
@@ -51,7 +49,14 @@ object TransObject {
     def _retries_ : Int = context.retries
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
-  
+
+  case class Snapshot[+I <: Id[O], O](o: O) extends Message[I, O, Unit] {
+    def pre = o != null
+    def app = o
+    def eff = { }
+    def pst = self.obj == o
+  }
+
   /*
    * A Context acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
    * To send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)

@@ -82,6 +82,8 @@ object Main {
     val a = IdA(1)
     val b = IdB(1)
     val ab = IdAB(1)
+
+    ab ! SetAge(1)
     
     a.setName(name = "name1")
     a.setAddress(address = "US")

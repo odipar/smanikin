@@ -20,8 +20,8 @@ object AdvancedTransfer {
 
     store.tryToCreateSchema()
     // Two independent Contexts with associated Transactors
-    val tx1 = Transactor(StoreContext(store))
-    val tx2 = Transactor(StoreContext(store))
+    val tx1 = Transactor(new StoreContext(store))
+    val tx2 = Transactor(new StoreContext(store))
 
     // Set up identifiers
     val a1 = Account.Id(iban = IBAN("A1"))

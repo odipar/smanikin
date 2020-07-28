@@ -42,21 +42,32 @@ object PostgresStore {
     }
     val latestTransactionCompiled = Compiled(latestTransaction _)
 
+    def latestSnapshot(id: Rep[Array[Byte]]) = {
+      event.filter(_.id === id).groupBy{ _ => true }.map {
+        case (_, group) => group.map(_.snapshot_id).max
+      }
+    }
+    val latestSnapshotCompiled = Compiled(latestSnapshot _)
+    
     def update(state: ST): ST = {
 
       state.map { x =>
         val id = x._1
         val idb = digest(id, buffer, kryo, msgd) // the SHA-256 hash of the serialized id
         var v_obj = x._2
-
-        // replay all events that occurred after the current version of the object
-        val eventQuery = eventQueryCompiled(idb, v_obj.version).result
         
-        val eventQueryTrs = eventQuery.transactionally.withTransactionIsolation(TransactionIsolation.RepeatableRead)
-        val events = Await.result(db.run(eventQueryTrs), Duration.Inf)
+        // lastest snapshot
+
+        val l_snapshot = Await.result(db.run(latestSnapshotCompiled(idb).result), Duration.Inf)
+        val lSnapshot = { if (l_snapshot.isEmpty) -1L ; else l_snapshot.head.getOrElse(-1L) }
+
+        // replay all events that occurred after the current or latest snapshot version of the object
+        val eventQuery = eventQueryCompiled(idb, v_obj.version max lSnapshot).result
+        
+        val events = Await.result(db.run(eventQuery), Duration.Inf)
 
         events.foreach { evt =>
-          val msg = toObject[Message[_ <: Id[Any], Any, Any]](evt._8, kryo)
+          val msg = toObject[Message[_ <: Id[Any], Any, Any]](evt._9, kryo)
           val version = evt._3
 
           // insert context into message
@@ -111,7 +122,7 @@ object PostgresStore {
       val insertEvents = prepareAndOrderEvents.
         map ( s => {
           // prepare event record
-          event += (0, s.ida, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
+          event += (0, s.ida, s.version, s.snapshotId, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction
@@ -141,5 +152,7 @@ object PostgresStore {
     }
   }
 
-  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any])
+  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any]) {
+    def snapshotId = if (msg.isInstanceOf[Snapshot[_ <: Any, Any]]) version ; else -1L
+  }
 }

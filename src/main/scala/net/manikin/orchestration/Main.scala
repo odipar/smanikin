@@ -1,12 +1,16 @@
 package net.manikin.orchestration
 
+import net.manikin.core.context.StoreContext.StoreContext
+import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
+
 object Main {
   import net.manikin.core.context.ObjectContext.ObjectContext
 
   trait IntTask extends Process.Task[Int]
 
   def main(args: Array[String]): Unit = {
-    implicit val c = new ObjectContext()
+    val store = new PostgresStore(tx_uuid = 1)
+    implicit val c = new StoreContext(store)
 
     val s = Scheduler.Id("s1") // The Scheduler will schedule two Processes
 
@@ -33,6 +37,8 @@ object Main {
 
     while(s.obj.queue.nonEmpty) { s ! Scheduler.Do() } // just keep the Scheduler going
 
+    c.commit()
+    
     println("p1.state: " + p1.state) 
     println("p1.failures: " + p1.data.failures)
     println("p1.data.state: " + p1.data.processData)

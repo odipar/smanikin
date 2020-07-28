@@ -20,17 +20,23 @@ object ConsistencyTest {
 
   def main(args: Array[String]): Unit = {
 
-    val db1 = new H2Store("h2_db", 1)
+    /*val db1 = new H2Store("h2_db", 1)
     val db2 = new H2Store("h2_db", 2)
     val db3 = new H2Store("h2_db", 3)
     val db4 = new H2Store("h2_db", 4)
+      */
 
+    val db1 = new PostgresStore("postgres_db", 1)
+    val db2 = new PostgresStore("postgres_db", 2)
+    val db3 = new PostgresStore("postgres_db", 3)
+    val db4 = new PostgresStore("postgres_db", 4)
+      
     db1.tryToCreateSchema()
 
-    val t1 = Transactor(StoreContext(db1))
-    val t2 = Transactor(StoreContext(db2))
-    val t3 = Transactor(StoreContext(db3))
-    val t4 = Transactor(StoreContext(db4))
+    val t1 = Transactor(new StoreContext(db1))
+    val t2 = Transactor(new StoreContext(db2))
+    val t3 = Transactor(new StoreContext(db3))
+    val t4 = Transactor(new StoreContext(db4))
     
     var f1: Long = 0; var f2: Long =0 ; var f3: Long = 0
 

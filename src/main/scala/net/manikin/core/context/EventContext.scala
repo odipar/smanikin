@@ -19,6 +19,14 @@ object EventContext {
     def apply[O](id: Id[O]): VObject[O] = vobj(current.getOrElse(id, previous(id)))
 
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
+      val vobj = apply(id)
+      if (vobj.version > 0 && (vobj.version % 10) == 0) {
+        send2(id, Snapshot(vobj.obj))
+        send2(id, message)
+      }
+      else send2(id, message)
+    }
+    def send2[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
       val old_obj = apply(id)
       val old_vid = VId(old_obj.version, id)
 
@@ -41,11 +49,14 @@ object EventContext {
           }.asInstanceOf[SEND]
 
           val new_obj = VObject(old_obj.version + 1, new_self)
-          current = current + (id -> new_obj)
-          level = level + 1
+
           prev = prev + (id -> old_obj)
+          current = current + (id -> new_obj)
+
+          level = level + 1
           val result = message.eff
           level = oldLevel
+
           prev = prev + (id -> old_obj)
 
           if (!message.pst) throw FailureException(PostFailed(old_vid, id.obj(this), message))

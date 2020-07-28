@@ -30,11 +30,12 @@ object ObjectContext {
 
           val new_obj = VObject(old_obj.version + 1, new_self)
 
+          prev = prev + (id -> old_obj)
           current = current + (id -> new_obj)
 
-          prev = prev + (id -> old_obj)
           val result = message.eff
-          prev = prev + (id -> old_obj)
+
+          prev = prev + (id -> old_obj) // we need to inject the old_obj again because eff could have overwritten it
 
           if (!message.pst) throw FailureException(PostFailed(old_vid, id.obj(this), message))
           else result
@@ -42,7 +43,8 @@ object ObjectContext {
       }
       catch {
         case t: Throwable => {
-          // rollbackprev = prev + (id -> old_obj)
+          // rollback
+          prev = prev + (id -> old_obj)
           current = current + (id -> old_obj)
           throw t
         }

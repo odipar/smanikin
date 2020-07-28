@@ -6,7 +6,7 @@ object Transactor {
   import java.util.UUID
 
   // A Transactor commits to a DefaultContext. Upon failure it retries.
-  case class Transactor(private var ctx: StoreContext = StoreContext()) {
+  case class Transactor(private var ctx: StoreContext = new StoreContext()) {
     def apply[O](id: Id[O]): VObject[O] = ctx.apply(id)
     def commit[I <: Id[O], O, R](id: I, message: Message[I, O, R]): R = commit(id, message, 3)
     def commit[I <: Id[O], O, R](id: I, message: Message[I, O, R], retry: Int): R = {

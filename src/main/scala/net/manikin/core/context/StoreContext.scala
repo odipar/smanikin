@@ -9,7 +9,7 @@ object StoreContext {
 
   // A StoreContext keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
-  case class StoreContext(private val store: Store = new InMemoryStore()) extends EventContext with Cloneable {
+  class StoreContext(private val store: Store = new InMemoryStore()) extends EventContext with Cloneable {
     protected var retries_ = 0
     protected var state: ST = HashMap()
 
