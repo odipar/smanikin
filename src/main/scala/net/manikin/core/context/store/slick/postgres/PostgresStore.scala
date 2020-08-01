@@ -6,7 +6,6 @@ object PostgresStore {
   import net.manikin.core.context.Store._
   import net.manikin.serialization.SerializationUtils
   import SerializationUtils._
-  import com.twitter.chill.ScalaKryoInstantiator
   import slick.jdbc.PostgresProfile.api._
   import slick.jdbc.TransactionIsolation
   import scala.concurrent.Await
@@ -60,7 +59,7 @@ object PostgresStore {
 
         val l_snapshot = Await.result(db.run(latestSnapshotCompiled(idb).result), Duration.Inf)
         val lSnapshot = { if (l_snapshot.isEmpty) -1L ; else l_snapshot.head.getOrElse(-1L) }
-
+        
         // replay all events that occurred after the current or latest snapshot version of the object
         val eventQuery = eventQueryCompiled(idb, v_obj.version max lSnapshot).result
         
@@ -69,11 +68,12 @@ object PostgresStore {
         events.foreach { evt =>
           val msg = toObject[Message[_ <: Id[Any], Any, Any]](evt._9, kryo)
           val version = evt._3
-
+          val serial_id = evt._1
+          
           // insert context into message
-          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, v_obj.obj)))
+          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, serial_id, v_obj.obj)))
 
-          v_obj = VObject(version + 1, msg.app)
+          v_obj = VObject(version + 1, serial_id, msg.app)
         }
 
         (x._1, v_obj)
@@ -114,15 +114,16 @@ object PostgresStore {
           // make sure the message is cleaned from context data
           msg.msgContext = null
 
-          OrderedMessage(digest(id, buffer, kryo, msgd), id, index, send.vid.version, send.level, msg)
+          OrderedMessage(digest(id, buffer, kryo, msgd), id, index, send.vid.version, send.vid.serial_id, send.level, msg)
         }).
         sortBy(x => (x.ida, x.version))  // order on ID and version to avoid expensive deadlocks
 
+      val n_serial_id = prepareAndOrderEvents.map(x => x.serial_id).max + 1
 
       val insertEvents = prepareAndOrderEvents.
         map ( s => {
           // prepare event record
-          event += (0, s.ida, s.version, s.snapshotId, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
+          event += (n_serial_id, s.ida, s.version, s.snapshotId, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction
@@ -140,7 +141,7 @@ object PostgresStore {
         case None => throw FailureException(DatabaseFailure())
       }
     }
-    
+
     def tryToCreateSchema(): Unit = {
       try {
         val schema = event.schema ++ transaction.schema
@@ -152,7 +153,7 @@ object PostgresStore {
     }
   }
 
-  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any]) {
+  case class OrderedMessage(ida: Array[Byte], id: Id[Any], index: Int, version: Long, serial_id: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any]) {
     def snapshotId = if (msg.isInstanceOf[Snapshot[_ <: Any, Any]]) version ; else -1L
   }
 }

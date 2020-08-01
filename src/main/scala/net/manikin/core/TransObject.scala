@@ -50,6 +50,7 @@ object TransObject {
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
 
+  /* Generic snapshot of the full Object state */
   case class Snapshot[+I <: Id[O], O](o: O) extends Message[I, O, Unit] {
     def pre = o != null
     def app = o
@@ -79,11 +80,12 @@ object TransObject {
   final case class MessageContext[+O](id: Id[O], context: Context)
 
   // Objects are versioned by Contexts. VObject equality is based solely on object content, with versions ignored.
-  final case class VObject[+O](version: Long, obj: O) {
+  final case class VObject[+O](version: Long, serial_id: Long, obj: O) {
     override def equals(other: Any) = other match {
       case v: VObject[O] => obj == v.obj
       case _ => false
     }
+    def withSerial(s_id: Long) = VObject(version, s_id, obj)
     override def hashCode = obj.hashCode
   }
 

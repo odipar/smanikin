@@ -12,13 +12,13 @@ object ObjectContext {
     def state: Map[Id[_], VObject[_]] = current
     def withState(m: Map[Id[_], VObject[_]]): ObjectContext = { prev = Map() ; current = m ; this }
 
-    def latest[O](id: Id[O]): VObject[O] = VObject(0, id.init)
+    def latest[O](id: Id[O]): VObject[O] = VObject(0, 0, id.init)
     def apply[O](id: Id[O]): VObject[O] = current.getOrElse(id, previous(id)).asInstanceOf[VObject[O]]
     def previous[O](id: Id[O]): VObject[O] = prev.getOrElse(id, latest(id)).asInstanceOf[VObject[O]]
 
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
       val old_obj = apply(id)
-      val old_vid = VId(old_obj.version, id)
+      val old_vid = VId(old_obj.version, old_obj.serial_id, id)
 
       // inject/scope MessageContext into Message
       message.msgContext = MessageContext(id, this)
@@ -28,7 +28,7 @@ object ObjectContext {
         else {
           val new_self = message.app
 
-          val new_obj = VObject(old_obj.version + 1, new_self)
+          val new_obj = VObject(old_obj.version + 1, old_obj.serial_id, new_self)
 
           prev = prev + (id -> old_obj)
           current = current + (id -> new_obj)

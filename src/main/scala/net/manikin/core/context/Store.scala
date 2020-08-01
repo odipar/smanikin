@@ -31,7 +31,7 @@ object Store {
   case class WriteSend[I <: Id[O], O, +R](level: Int, vid: VId[O], message: Message[I, O, R]) extends Send[I, O, R]
   case class FailureSend[I <: Id[O], O, +R](level: Int, vid: VId[O], message: Message[I, O, R]) extends Send[I, O, R]
 
-  case class VId[+O](version: Long, id: Id[O])
+  case class VId[+O](version: Long, serial_id: Long, id: Id[O])
 
   trait StoreFailure extends Failure
   case class SnapshotFailure() extends StoreFailure

@@ -26,7 +26,10 @@ object StoreContext {
       val write_origins = sends.groupBy(x => x.vid.id).map(x => (x._1, x._2.map(x => x.vid.version).min))
       // prev versions are superseded by write origin versions
       store.commit(prev.map(x => (x._1, x._2.version)) ++ write_origins, sends)
-      state = state ++ current
+      val n_serial_id = current.map(x => x._2.serial_id).max + 1
+      val ncurrent = current.map(x => (x._1, x._2.withSerial(n_serial_id)))
+      
+      state = state ++ ncurrent
       prev = HashMap()
       current = HashMap()
       sends = Vector()
@@ -35,7 +38,7 @@ object StoreContext {
 
 
     override protected def latestVersion[O](id: Id[O]): VObject[O] = {
-      val upd = store.update(Map(id -> state.getOrElse(id, VObject(0, id.init))))
+      val upd = store.update(Map(id -> state.getOrElse(id, VObject(0, 0, id.init))))
       prev = prev ++ upd
       state = state ++ upd
       previous(id)

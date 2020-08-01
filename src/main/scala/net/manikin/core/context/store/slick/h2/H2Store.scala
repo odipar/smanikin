@@ -58,12 +58,13 @@ object H2Store {
 
         events.foreach { evt =>
           val msg = toObject[Message[_ <: Id[Any], Any, Any]](evt._11, kryo)
+          val serial_id = evt._1
           val version = evt._6
 
           // insert context into message
-          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, v_obj.obj)))
+          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, serial_id, v_obj.obj)))
 
-          v_obj = VObject(version + 1, msg.app)
+          v_obj = VObject(version + 1, serial_id, msg.app)
         }
 
         (x._1, v_obj)
@@ -106,15 +107,16 @@ object H2Store {
           msg.msgContext = null
 
           val isha = sha256(toBytes(id, buffer, kryo))
-          OrderedMessage(isha._1, isha._2, isha._3, isha._4, id, index, send.vid.version, send.level, msg)
+          OrderedMessage(isha._1, isha._2, isha._3, isha._4, id, index, send.vid.version, send.vid.serial_id, send.level, msg)
         }).
         sortBy(x => (x.id1, x.id2, x.id3, x.id4, x.version))  // order on ID and version to avoid expensive deadlocks
 
+      val n_serial_id = prepareAndOrderEvents.map(x => x.serial_id).max + 1
 
       val insertEvents = prepareAndOrderEvents.
         map ( s => {
           // prepare event record
-          event += (0, s.id1, s.id2, s.id3, s.id4, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
+          event += (n_serial_id, s.id1, s.id2, s.id3, s.id4, s.version, tx_uuid, tx_id, s.level, s.index, toBytes(s.msg, buffer, kryo) , s.id.toString, s.msg.typeString, s.id.typeString)
         })
 
       // both snapshot checks, inserts and transaction need to be in one database Transaction
@@ -148,5 +150,5 @@ object H2Store {
     }
   }
 
-  case class OrderedMessage(id1: Long, id2: Long, id3: Long, id4: Long, id: Id[Any], index: Int, version: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any])
+  case class OrderedMessage(id1: Long, id2: Long, id3: Long, id4: Long, id: Id[Any], index: Int, version: Long, serial_id: Long, level: Int, msg: Message[_ <: Id[Any], Any, Any])
 }

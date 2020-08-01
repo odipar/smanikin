@@ -13,14 +13,14 @@ object EventContext {
     var sends: Vector[SEND] = Vector()
 
     protected def vobj[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
-    protected def latestVersion[O](id: Id[O]): VObject[O] = VObject(0, id.init)
+    protected def latestVersion[O](id: Id[O]): VObject[O] = VObject(0, 0, id.init)
 
     def previous[O](id: Id[O]): VObject[O] = vobj(prev.getOrElse(id, latestVersion(id)))
     def apply[O](id: Id[O]): VObject[O] = vobj(current.getOrElse(id, previous(id)))
 
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
       val vobj = apply(id)
-      if (vobj.version > 0 && (vobj.version % 10) == 0) {
+      if (vobj.version > 0 && (vobj.version % 10) == 0) { // snapshot after 100 events
         send2(id, Snapshot(vobj.obj))
         send2(id, message)
       }
@@ -28,7 +28,7 @@ object EventContext {
     }
     def send2[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
       val old_obj = apply(id)
-      val old_vid = VId(old_obj.version, id)
+      val old_vid = VId(old_obj.version, old_obj.serial_id, id)
 
       // inject/scope MessageContext into Message
       message.msgContext = MessageContext(id, this)
@@ -48,7 +48,7 @@ object EventContext {
             else WriteSend(level, old_vid, message)
           }.asInstanceOf[SEND]
 
-          val new_obj = VObject(old_obj.version + 1, new_self)
+          val new_obj = VObject(old_obj.version + 1, old_obj.serial_id, new_self)
 
           prev = prev + (id -> old_obj)
           current = current + (id -> new_obj)

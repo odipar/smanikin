@@ -20,13 +20,14 @@ object InMemoryStore {
 
           // replay
           while (evt.contains(v_obj.version)) {
-            val msg = evt(v_obj.version).message
+            val snd = evt(v_obj.version)
+            val msg = snd.message
 
             // inject replay context and this
             msg.msgContext = MessageContext(id, ReplayContext(id, v_obj))
 
             // apply event
-            v_obj = VObject(v_obj.version + 1, msg.app)
+            v_obj = VObject(v_obj.version + 1, snd.vid.serial_id, msg.app)
           }
 
           (id, v_obj)
