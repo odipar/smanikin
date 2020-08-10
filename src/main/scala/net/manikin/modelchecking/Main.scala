@@ -30,6 +30,14 @@ object Main {
 
     queue.enqueue(Map())
 
+    print("#objects\t")
+    print("#messages\t")
+    print("#iterations\t")
+    print("#unique states\t")
+    print("#queue\t")
+    print("#cache\t")
+    print("#errors\t")
+
     SerializationUtils.time {
       while (queue.nonEmpty) {
 
@@ -49,21 +57,24 @@ object Main {
           iterations += 1
 
           if ((iterations % 1000000) == 0) {
-            println("#iterations: " + iterations)
-            println("#queue: " + queue.size)
-            println("#unique states: " + seen.size)
-            println("#cache: " + cache)
-            println("#errors: " + errors)
-            println()
+            println
+            print(objects.size + "\t")
+            print(msgGenerator.size + "\t")
+            print(iterations + "\t")
+            print(seen.size + "\t")
+            print(queue.size + "\t")
+            print(cache + "\t")
+            print(errors + "\t")
           }
         }
       }
     }
-
+    println
     println("#objects: " + objects.size)
     println("#messages: " + msgGenerator.size)
     println("#iterations: " + iterations)
     println("#unique states: " + seen.size)
+    println("#queue: " + queue.size)
     println("#cache: " + cache)
     println("#errors: " + errors)
   }

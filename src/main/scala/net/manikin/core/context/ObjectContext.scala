@@ -4,13 +4,21 @@ object ObjectContext {
   import net.manikin.core.TransObject.{Context, FailureException, Id, Message, MessageContext, VObject}
   import net.manikin.core.context.EventContext.{PostFailed, PreFailed}
   import net.manikin.core.context.Store._
+  import net.manikin.core.TransObject.ST
+  import scala.collection.immutable.HashMap
 
   class ObjectContext() extends Context {
-    var prev: Map[Id[_], VObject[_]] = Map()
-    var current: Map[Id[_], VObject[_]] = Map()
+    var prev: ST = HashMap()
+    var current: ST = HashMap()
+    var failures = HashMap[Id[_], Int]()
 
     def state: Map[Id[_], VObject[_]] = current
-    def withState(m: Map[Id[_], VObject[_]]): ObjectContext = { prev = Map() ; current = m ; this }
+    def withState(m: Map[Id[_], VObject[_]]): ObjectContext = {
+      failures = HashMap()
+      prev = Map()
+      current = m
+      this
+    }
 
     def latest[O](id: Id[O]): VObject[O] = VObject(0, 0, id.init)
     def apply[O](id: Id[O]): VObject[O] = current.getOrElse(id, previous(id)).asInstanceOf[VObject[O]]
@@ -43,6 +51,7 @@ object ObjectContext {
       }
       catch {
         case t: Throwable => {
+          failures = failures + (id -> failures.getOrElse(id, 0))
           // rollback
           prev = prev + (id -> old_obj)
           current = current + (id -> old_obj)
@@ -51,6 +60,6 @@ object ObjectContext {
       }
     }
 
-    def retries = 0
+    def failures[O](id: Id[O]) = failures.getOrElse(id, 0)
   }
 }

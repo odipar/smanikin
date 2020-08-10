@@ -102,7 +102,7 @@ object ConsistencyTest {
       if ((tid % 1000) == 0) println("tx: " + tx + ": " + (tid - offset))
 
       try tx.commit(TId(), RandomBatchTransfer(work))
-      catch { case t: Throwable => /*println("t: " + t)*/  ; failures += 1 }
+      catch { case t: Throwable => println("t: " + t)  ; failures += 1 }
 
     }
     failures

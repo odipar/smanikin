@@ -10,7 +10,8 @@ object EventContext {
     protected var level = 0
     protected var prev: ST = HashMap()
     protected var current: ST = HashMap()
-    var sends: Vector[SEND] = Vector()
+    protected var sends: Vector[SEND] = Vector()
+    protected var failures_ = HashMap[Id[_], Int]()
 
     protected def vobj[O](v: VObject[_]): VObject[O] = v.asInstanceOf[VObject[O]]
     protected def latestVersion[O](id: Id[O]): VObject[O] = VObject(0, 0, id.init)
@@ -68,6 +69,7 @@ object EventContext {
       }
       catch {
         case t: Throwable => {
+          failures_ = failures_ + (id -> failures_.getOrElse(id, 0))
 
           // rollback
           level = oldLevel
@@ -80,7 +82,7 @@ object EventContext {
       }
     }
 
-    def retries = 0
+    def failures[O](id: Id[O]): Int = failures_.getOrElse(id, 0)
   }
 
   case class PreFailed[+I <: Id[O], O, +R](id: VId[O], state: O, message: Message[I, O, R]) extends Failure

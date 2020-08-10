@@ -9,8 +9,9 @@ object TransObject {
   trait Id[+O] {
     def init: O
 
-    def version(implicit ctx: Context) : Long = ctx(this).version
-    def old_version(implicit ctx: Context) : Long = ctx.previous(this).version
+    def failures(implicit ctx: Context): Int = ctx.failures(this)
+    def version(implicit ctx: Context): Long = ctx(this).version
+    def old_version(implicit ctx: Context): Long = ctx.previous(this).version
 
     def obj(implicit ctx: Context): O = ctx(this).obj
     def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
@@ -45,8 +46,9 @@ object TransObject {
 
     def obj = self.obj
     def old_obj = self.old_obj
+
+    def failures: Int = self.failures
     
-    def _retries_ : Int = context.retries
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
 
@@ -61,14 +63,14 @@ object TransObject {
   /*
    * A Context acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
    * To send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
-   * A Context implementation is optionally responsible for Transactional guarantees when a Message is committed
+   * A Context implementation is optionally responsible for Transactional guarantees when Messages are committed
    */
   trait Context {
     def apply[O](id: Id[O]): VObject[O]
     def previous[O](id: Id[O]): VObject[O]
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R
-    
-    def retries: Int
+
+    def failures[O](id: Id[O]): Int
   }
 
   // Some convenient type defs

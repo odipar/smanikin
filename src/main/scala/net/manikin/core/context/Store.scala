@@ -15,6 +15,7 @@ object Store {
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = error
     def failure: TransObject.Failure = null
     def retries: Int = error
+    def failures[O](id: Id[O]) = error
     def error = sys.error("replaying")
   }
 

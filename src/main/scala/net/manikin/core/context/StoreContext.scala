@@ -10,15 +10,19 @@ object StoreContext {
   // A StoreContext keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
   class StoreContext(private val store: Store = new InMemoryStore()) extends EventContext with Cloneable {
-    protected var retries_ = 0
     protected var state: ST = HashMap()
 
     def copyThis(): StoreContext = this.clone().asInstanceOf[StoreContext]
     def retry(ctx: StoreContext): Boolean = {
-      val old = ctx.prev.keySet.map(id => (id, ctx.state(id))).toMap
+      val scope = ctx.prev.keySet
+
+      val old = scope.map(id => (id, ctx.state(id))).toMap
       val updated = store.update(old)
       state = state ++ updated
-      retries_ += 1
+
+      // increase total failures + 1 for scope
+      failures_ = failures_ ++ scope.map(id => (id, ctx.failures(id) + 1))
+      
       old != updated // return whether anything got updated (no retries needed if not)
     }
 
@@ -33,7 +37,7 @@ object StoreContext {
       prev = HashMap()
       current = HashMap()
       sends = Vector()
-      retries_ = 0
+      failures_ = HashMap()
     }
 
 
