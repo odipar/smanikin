@@ -15,12 +15,12 @@ object Fibonacci {
     def arg = f.arg
 
     def eff = {
-      f.state match {
+      f.abstractState match {
         case "Initial" => f ! Memorize {
           if (arg < 2) arg
           else (self ! Calculate(Fibonacci(arg - 1))) + (self ! Calculate(Fibonacci(arg - 2)))
         }
-        case "Memorized" => { println("memorized: " + f) ; f.data }
+        case "Memorized" => { println("memorized: " + f) ; f.state }
       }
     }
   }
@@ -31,10 +31,10 @@ object Fibonacci {
     def nst = { case _ => "Memorized" }
     def pre = true
     def apl = result
-    def eff = data
+    def eff = state
     def pst = {
-      if (arg < 2) data == arg
-      else data == (Fibonacci(arg - 1).data + Fibonacci(arg - 2).data)
+      if (arg < 2) state == arg
+      else state == (Fibonacci(arg - 1).state + Fibonacci(arg - 2).state)
     }
   }
 

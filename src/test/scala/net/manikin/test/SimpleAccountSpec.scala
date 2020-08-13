@@ -24,10 +24,10 @@ class SimpleAccountSpec extends AnyWordSpec with Matchers {
       t1 ! Transfer.Book(a1, a2, 20)
       t2 ! Transfer.Book(a2, a1, 30)
 
-      a1.data.balance shouldBe 110 // 100 - 20 + 30
-      a2.data.balance shouldBe 40  //  50 + 20 - 30
-      t1.state shouldBe "Booked"
-      t2.state shouldBe "Booked"
+      a1.state.balance shouldBe 110 // 100 - 20 + 30
+      a2.state.balance shouldBe 40  //  50 + 20 - 30
+      t1.abstractState shouldBe "Booked"
+      t2.abstractState shouldBe "Booked"
     }
   }
 }

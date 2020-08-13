@@ -39,12 +39,12 @@ object Main {
 
     c.commit()
     
-    println("p1.state: " + p1.state) 
-    println("p1.failures: " + p1.data.failures)
-    println("p1.data.state: " + p1.data.processData)
+    println("p1.state: " + p1.abstractState)
+    println("p1.failures: " + p1.state.failures)
+    println("p1.data.state: " + p1.state.processData)
 
-    println("p2.state: " + p2.state)
-    println("p2.failures: " + p2.data.failures)
-    println("p2.data.state: " + p2.data.processData)
+    println("p2.state: " + p2.abstractState)
+    println("p2.failures: " + p2.state.failures)
+    println("p2.data.state: " + p2.state.processData)
   }
 }

@@ -11,11 +11,11 @@ object StateObject {
     def init = StateObject(initData, "Initial")
     def initData: O
 
-    def state(implicit ctx: Context): String = obj.state
-    def old_state(implicit ctx: Context): String = old_obj.state
+    def abstractState(implicit ctx: Context): String = obj.state
+    def old_abstractState(implicit ctx: Context): String = old_obj.state
 
-    def data(implicit ctx: Context): O = obj.data
-    def old_data(implicit ctx: Context): O = old_obj.data
+    def state(implicit ctx: Context): O = obj.data
+    def old_state(implicit ctx: Context): O = old_obj.data
 
     override def typeString = {
       "StateObject("+this.init.data.getClass.getName.replace("$", ".")+",_)"
@@ -24,11 +24,11 @@ object StateObject {
 
   // A StateObject goes through 'transitions' - from one abstract state to another
   trait StateMessage[+I <: StateId[O], O, +R] extends Message[I, StateObject[O], R] {
-    def state : String = self.state
-    def old_state : String = self.old_state
+    def abstractState : String = self.abstractState
+    def old_abstractState : String = self.old_abstractState
 
-    def data : O = self.data
-    def old_data : O = self.old_data
+    def state : O = self.state
+    def old_state : O = self.old_state
 
     def nst: PartialFunction[String, String]
     def app = {

@@ -15,12 +15,12 @@ object Factorial {
     def arg = f.arg
 
     def eff = {
-      f.state match {
+      f.abstractState match {
         case "Initial" => f ! Memorize {
           if (arg < 2) arg
           else arg * (self ! Calculate(Factorial(arg - 1)))
         }
-        case "Memorized" => {println("memorized: " + f); f.data}
+        case "Memorized" => {println("memorized: " + f); f.state}
       }
     }
   }
@@ -31,10 +31,10 @@ object Factorial {
     def nst = { case _ => "Memorized" }
     def pre = true
     def apl = result
-    def eff = data
+    def eff = state
     def pst = {
-      if (arg < 2) data == arg
-      else data == arg * Factorial(arg - 1).data
+      if (arg < 2) state == arg
+      else state == arg * Factorial(arg - 1).state
     }
   }
 

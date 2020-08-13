@@ -5,37 +5,37 @@ object AccountHolder {
   import net.manikin.core.context.StoreContext.StoreContext
   import IBAN._
 
-  case class AccountId(iban: IBAN) extends StateId[AccountData] { def initData = AccountData() }
-  case class AccountData(balance: Long = 0, minimum: Long = 0, holder: HolderId = null)
+  case class AccountId(iban: IBAN) extends StateId[AccountState] { def initData = AccountState() }
+  case class AccountState(balance: Long = 0, minimum: Long = 0, holder: HolderId = null)
 
   case class HolderId(id: String) extends StateId[HolderData] {
     def initData = HolderData()
   }
-  
+
   case class HolderData(accounts: Set[AccountId] = Set())
 
-  trait AccountMessage extends StateMessage[AccountId, AccountData, Unit] {
-    def accounts = data.holder.data.accounts
-    def holderInvariant = accounts.forall(_.data.holder == data.holder) && accounts.map(_.data.balance).sum >= 0
+  trait AccountMessage extends StateMessage[AccountId, AccountState, Unit] {
+    def accounts = state.holder.state.accounts
+    def holderInvariant = accounts.forall(_.state.holder == state.holder) && accounts.map(_.state.balance).sum >= 0
 
-    def invariant = data.balance >= data.minimum && holderInvariant
+    def invariant = state.balance >= state.minimum && holderInvariant
   }
   
   trait HolderMessage extends StateMessage[HolderId, HolderData, Unit]
   
-  case class TransferId(id: Long) extends StateId[TransferData] { def initData = TransferData() }
-  case class TransferData(from: AccountId = null, to: AccountId = null, amount: Long = 0)
+  case class TransferId(id: Long) extends StateId[TransferState] { def initData = TransferState() }
+  case class TransferState(from: AccountId = null, to: AccountId = null, amount: Long = 0)
 
-  trait TransferMessage extends StateMessage[TransferId, TransferData, Unit] {
-    def amount = data.amount
-    def from   = data.from
-    def to     = data.to
+  trait TransferMessage extends StateMessage[TransferId, TransferState, Unit] {
+    def amount = state.amount
+    def from   = state.from
+    def to     = state.to
   }
 
   case class Create(_from: AccountId, _to: AccountId, _amount: Long) extends TransferMessage {
     def nst = { case "Initial" => "Created" }
     def pre = _amount > 0 && _from != _to
-    def apl = data.copy(from = _from, to = _to, amount = _amount)
+    def apl = state.copy(from = _from, to = _to, amount = _amount)
     def eff = { }
     def pst = from == _from && to == _to && amount == _amount
   }
@@ -43,41 +43,41 @@ object AccountHolder {
   case class Book() extends TransferMessage {
     def nst = { case "Created" => "Booked" }
     def pre = true
-    def apl = data
+    def apl = state
     def eff = { from ! Withdraw(amount) ; to ! Deposit(amount) }
-    def pst = from.old_data.balance + to.old_data.balance == from.data.balance + to.data.balance
+    def pst = from.old_state.balance + to.old_state.balance == from.state.balance + to.state.balance
   }
   
   case class Open(initial: Long, minimum: Long, holder: HolderId) extends AccountMessage {
     def nst = { case "Initial" => "Opened" }
     def pre = initial > 0
-    def apl = data.copy(balance = initial, minimum = minimum, holder = holder)
+    def apl = state.copy(balance = initial, minimum = minimum, holder = holder)
     def eff = { holder ! AddAccount(self) }
-    def pst = invariant && data.balance == initial
+    def pst = invariant && state.balance == initial
   }
 
   case class Withdraw(amount: Long) extends AccountMessage {
     def nst = { case "Opened" => "Opened" }
     def pre = invariant && amount > 0
-    def apl = data.copy(balance = data.balance - amount)
+    def apl = state.copy(balance = state.balance - amount)
     def eff = { }
-    def pst = invariant && data.balance == old_data.balance - amount
+    def pst = invariant && state.balance == old_state.balance - amount
   }
 
   case class Deposit(amount: Long) extends AccountMessage {
     def nst = { case "Opened" => "Opened" }
     def pre = invariant && amount > 0
-    def apl = data.copy(balance = data.balance + amount)
+    def apl = state.copy(balance = state.balance + amount)
     def eff = { }
-    def pst = invariant && data.balance == old_data.balance + amount
+    def pst = invariant && state.balance == old_state.balance + amount
   }
 
   case class AddAccount(account: AccountId) extends HolderMessage {
     def nst = { case x => x }
-    def pre = account.data.holder == self
-    def apl = data.copy(accounts = data.accounts + account)
+    def pre = account.state.holder == self
+    def apl = state.copy(accounts = state.accounts + account)
     def eff = { }
-    def pst = data.accounts.contains(account)
+    def pst = state.accounts.contains(account)
   }
 
   def main(args: Array[String]): Unit = {

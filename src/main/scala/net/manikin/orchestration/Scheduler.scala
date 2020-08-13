@@ -5,13 +5,13 @@ object Scheduler {
   import scala.collection.immutable.Queue
   import net.manikin.core.TransObject
 
-  case class Id(id: String) extends TransObject.Id[Data] {
-    def init = Data()
+  case class Id(id: String) extends TransObject.Id[State] {
+    def init = State()
   }
 
-  case class Data(queue: Queue[Process.Id[Any]] = Queue())
+  case class State(queue: Queue[Process.Id[Any]] = Queue())
 
-  trait SchedulerMsg[+R] extends TransObject.Message[Id, Data, R]
+  trait SchedulerMsg[+R] extends TransObject.Message[Id, State, R]
 
   case class Add(p: Process.Id[Any]) extends SchedulerMsg[Unit] {
     def pre = true
@@ -26,7 +26,7 @@ object Scheduler {
     def eff = {
       val p = old_obj.queue.dequeue._1
 
-      if (!(p.state == "Done" || p.state == "Failed")) {
+      if (!(p.abstractState == "Done" || p.abstractState == "Failed")) {
         p ! Process.Do[Any]()
         self ! Add(p) // Reschedule
       }

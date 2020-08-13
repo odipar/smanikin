@@ -4,23 +4,23 @@ object Account {
   import net.manikin.core.state.StateObject._
   import IBAN._
 
-  case class Id  (iban: IBAN) extends StateId[Data] { def initData = Data() }
-  case class Data(balance: Long = 0) // in cents
+  case class Id  (iban: IBAN) extends StateId[State] { def initData = State() }
+  case class State(balance: Long = 0) // in cents
 
-  trait Msg extends StateMessage[Id, Data, Unit]
+  trait Msg extends StateMessage[Id, State, Unit]
 
   case class Open(initial: Long) extends Msg {
     def nst = { case "Initial" => "Opened" }
     def pre = initial > 0
-    def apl = data.copy(balance = initial)
+    def apl = state.copy(balance = initial)
     def eff = { }
-    def pst = data.balance == initial
+    def pst = state.balance == initial
   }
 
   case class ReOpen() extends Msg {
     def nst = { case "Closed" => "Opened" }
     def pre = true
-    def apl = data
+    def apl = state
     def eff = { }
     def pst = true
   }
@@ -28,24 +28,24 @@ object Account {
   case class Close() extends Msg {
     def nst = { case "Opened" => "Closed" }
     def pre = true
-    def apl = data
+    def apl = state
     def eff = { }
     def pst = true
   }
 
   case class Withdraw(amount: Long) extends Msg {
     def nst = { case "Opened" => "Opened" }
-    def pre = amount > 0 && data.balance >= amount
-    def apl = data.copy(balance = data.balance - amount)
+    def pre = amount > 0 && state.balance >= amount
+    def apl = state.copy(balance = state.balance - amount)
     def eff = { }
-    def pst = data.balance == old_data.balance - amount
+    def pst = state.balance == old_state.balance - amount
   }
 
   case class Deposit(amount: Long) extends Msg {
     def nst = { case "Opened" => "Opened" }
     def pre = amount > 0
-    def apl = data.copy(balance = data.balance + amount)
+    def apl = state.copy(balance = state.balance + amount)
     def eff = { }
-    def pst = data.balance == old_data.balance + amount
+    def pst = state.balance == old_state.balance + amount
   }
 }

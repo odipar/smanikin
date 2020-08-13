@@ -65,7 +65,7 @@ object ConsistencyTest {
     }
     
     case class Sum() extends Transaction[Long] {
-      def eff = (0 until nr_accounts).map(a => Account.Id(IBAN("A" + a)).data.balance).sum
+      def eff = (0 until nr_accounts).map(a => Account.Id(IBAN("A" + a)).state.balance).sum
     }
 
     println("done")

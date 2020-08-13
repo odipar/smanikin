@@ -6,13 +6,13 @@ object Process {
   import net.manikin.core.state.StateObject.{StateId, StateMessage}
   import scala.util.Try
 
-  case class Id[+S](id: String, initial: S) extends StateId[Data[S]] {
-    def initData = Data(processData = initial)
+  case class Id[+S](id: String, initial: S) extends StateId[State[S]] {
+    def initData = State(processData = initial)
   }
 
-  case class Data[+S](processData: S, step: Int = 0, failures: Int = 0, steps: Seq[Task[S]] = Seq())
+  case class State[+S](processData: S, step: Int = 0, failures: Int = 0, steps: Seq[Task[S]] = Seq())
 
-  trait Msg[S] extends StateMessage[Id[S], Data[S], S]
+  trait Msg[S] extends StateMessage[Id[S], State[S], S]
 
   abstract class Task[+S](name: String = "") extends Cloneable {
     implicit var ctx: Context = _
@@ -34,22 +34,22 @@ object Process {
   case class Add[S](s: Task[S]) extends Msg[S] {
     def nst = { case "Initial" | "Define" => "Define" }
     def pre = true
-    def apl = data.copy(steps = data.steps :+ s)
-    def eff = data.processData
-    def pst = data.steps == old_data.steps :+ s
+    def apl = state.copy(steps = state.steps :+ s)
+    def eff = state.processData
+    def pst = state.steps == old_state.steps :+ s
   }
 
   case class Do[S]() extends Msg[S] {
     def nst = { case "Define" | "Running" => "Running" }
     def pre = true
-    def apl = data
+    def apl = state
     def eff = {
-      def task = data.steps(data.step)
+      def task = state.steps(state.step)
 
-      Try( self ! Success[S](task(data.processData, context)) ) getOrElse {  // Can we process the Task?
+      Try( self ! Success[S](task(state.processData, context)) ) getOrElse {  // Can we process the Task?
         Try( self ! Failure[S]() ) getOrElse {                               // No, send Failure
           Try( self ! Failed[S]() ) getOrElse {                              // Failure fails, the Process has Failed
-            data.processData
+            state.processData
           }
         }
       }
@@ -60,32 +60,32 @@ object Process {
   case class Success[S](s: S) extends Msg[S] {
     def nst = { case "Running" => "Running" }
     def pre = true
-    def apl = data.copy(processData = s, step = data.step + 1)
-    def eff = if (data.step >= data.steps.size) self ! Done[S]() ; else data.processData
+    def apl = state.copy(processData = s, step = state.step + 1)
+    def eff = if (state.step >= state.steps.size) self ! Done[S]() ; else state.processData
     def pst = true
   }
 
   case class Failure[S]() extends Msg[S] {
     def nst = { case "Running" => "Running" }
-    def pre = data.failures < 3 // retry three times
-    def apl = data.copy(failures = self.data.failures + 1)
-    def eff = data.processData
-    def pst = data.failures == old_data.failures + 1
+    def pre = state.failures < 3 // retry three times
+    def apl = state.copy(failures = self.state.failures + 1)
+    def eff = state.processData
+    def pst = state.failures == old_state.failures + 1
   }
 
   case class Failed[S]() extends Msg[S] {
     def nst = { case "Running" => "Failed" }
-    def pre = data.failures == 3
-    def apl = data
-    def eff = data.processData
+    def pre = state.failures == 3
+    def apl = state
+    def eff = state.processData
     def pst = true
   }
 
   case class Done[S]() extends Msg[S] {
     def nst = { case "Running" => "Done" }
-    def pre = data.step == self.data.steps.size
-    def apl = data
-    def eff = data.processData
+    def pre = state.step == self.state.steps.size
+    def apl = state
+    def eff = state.processData
     def pst = true
   }
 }
