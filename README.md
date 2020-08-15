@@ -1,11 +1,11 @@
 # Manikin
-Manikin is an embedded Scala Domain Specific Language (DSL) that implements Transactional Objects - Objects that participate and interact in the scope of Transactions,x or Worlds.
+Manikin is an embedded Scala Domain Specific Language (DSL) that implements Transactional Objects - Objects that participate and interact in the scope of Worlds.
 Manikin guards Object states with pre- and post Conditions, while tracking all stateful Effects and dispatched Messages.
 
-Manikin is heavily inspired by the [Eiffel](https://www.eiffel.com) programming language and [Worlds](http://www.vpri.org/pdf/tr2011001_final_worlds.pdf) that have similar goals.
+Manikin is heavily inspired by the [Eiffel](https://www.eiffel.com) programming language, [Software Transactional Memory](https://en.wikipedia.org/wiki/Software_transactional_memory) and [Worlds](http://www.vpri.org/pdf/tr2011001_final_worlds.pdf) that have similar goals.
 
 ### Message dispatch through Contexts
-Messages are dispatched via Transactional Worlds which are then functionally updated and passed through after each (nested) dispatch.
+Messages are dispatched via Worlds which are then functionally updated and passed through after each (nested) dispatch.
 Because Worlds keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure, or to retry Transactions after conflicts. 
 
 ### Distributed Transactions
