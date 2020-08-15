@@ -94,7 +94,7 @@ object Account {
 }
 ```
 ```scala
-bject Transfer {
+object Transfer {
   import net.manikin.core.state.StateObject._
 
   case class Id  (id: Long) extends StateId[State] { def initData = State() }
