@@ -12,7 +12,7 @@ Because Worlds keep track of all intermediate and previous Object states, it is 
 Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Worlds - backed by databases such as [CockroachDB](https://www.cockroachlabs.com) - with strong [Serializability](https://en.wikipedia.org/wiki/Serializability) guarantees.  
                                                            
 ### Syntax and Types
-You can succinctly specify Objects, Messages, Conditions and Effects with Manikin *and* statically type them (as Manikin piggybacks on Scala's advanced typed system). 
+You can succinctly specify Objects, Identities, Messages, Conditions and Effects with Manikin *and* statically type them (as Manikin piggybacks on Scala's advanced typed system). 
 Additionally, Manikin reduces the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
 
 Here is a simple Bank Transfer example, written in the Manikin DSL:
@@ -35,10 +35,10 @@ object SimpleTransfer {
     t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
     t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
 
-    println("a1: " + ctx(a1)) // a1: StateObject(Data(10.0),Opened)
-    println("a2: " + ctx(a2)) // a2: StateObject(Data(190.0),Opened)
-    println("t1: " + ctx(t1)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
-    println("t2: " + ctx(t2)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
+    println("a1: " + ctx(a1)) // a1: VObject(3,0,StateObject(State(10),Opened))
+    println("a2: " + ctx(a2)) // a2: VObject(3,0,StateObject(State(190),Opened))
+    println("t1: " + ctx(t1)) // t1: VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),30),Booked))
+    println("t2: " + ctx(t2)) // t2: VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),40),Booked))
   }
 }
 ```

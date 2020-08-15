@@ -18,9 +18,9 @@ object SimpleTransfer {
     t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
     t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
 
-    println("a1: " + ctx(a1)) // a1: StateObject(Data(10.0),Opened)
-    println("a2: " + ctx(a2)) // a2: StateObject(Data(190.0),Opened)
-    println("t1: " + ctx(t1)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),30.0),Booked)
-    println("t2: " + ctx(t2)) // t1: StateObject(Data(Id(IBAN(A1)),Id(IBAN(A2)),40.0),Booked)
+    println("a1: " + ctx(a1)) // a1: VObject(3,0,StateObject(State(10),Opened))
+    println("a2: " + ctx(a2)) // a2: VObject(3,0,StateObject(State(190),Opened))
+    println("t1: " + ctx(t1)) // t1: VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),30),Booked))
+    println("t2: " + ctx(t2)) // t2: VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),40),Booked))
   }
 }
