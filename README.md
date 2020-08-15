@@ -8,10 +8,10 @@ Manikin is heavily inspired by the [Eiffel](https://www.eiffel.com) programming 
 Messages are dispatched via Worlds which are then functionally updated and passed through after each (nested) dispatch.
 Because Worlds keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure, or to retry Transactions after conflicts. 
 
-### Concurrent and Distributed Worlds
+### Concurrent and Distributed
 Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Worlds - backed by databases such as [CockroachDB](https://www.cockroachlabs.com) - with strong [Serializability](https://en.wikipedia.org/wiki/Serializability) guarantees.  
                                                            
-### Syntax and types
+### Syntax and Types
 You can succinctly specify Objects, Messages, Conditions and Effects with Manikin *and* statically type them (as Manikin piggybacks on Scala's advanced typed system). 
 Additionally, Manikin reduces the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
 
