@@ -1,9 +1,9 @@
 package net.manikin.test
 
-import net.manikin.core.TransObject.{Context, Id, Message}
-import net.manikin.core.context.EventContext.EventContext
-import net.manikin.core.context.ObjectContext.ObjectContext
-import net.manikin.core.context.StoreContext.StoreContext
+import net.manikin.core.TransObject.{World, Id, Message}
+import net.manikin.core.context.EventWorld.EventWorld
+import net.manikin.core.context.ObjectWorld.ObjectWorld
+import net.manikin.core.context.StoreWorld.StoreWorld
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -19,7 +19,7 @@ class RecursionSpec extends AnyWordSpec with Matchers {
     def pst = obj == old_obj * (c to self.f).product
   }
 
-  def testRecursion(implicit c: Context): Unit = {
+  def testRecursion(implicit c: World): Unit = {
     val fac10 = Factorial(10)
     val fac500 = Factorial(500)
 
@@ -31,8 +31,8 @@ class RecursionSpec extends AnyWordSpec with Matchers {
   }
 
   "Recursion with references to old state should not throw Exception" should {
-    "for ObjectContext" in { testRecursion(new ObjectContext()) }
-    "for EventContext" in { testRecursion(new EventContext()) }
-    "for StoreContext" in { testRecursion(new StoreContext()) }
+    "for ObjectWorld" in { testRecursion(new ObjectWorld()) }
+    "for EventWorld" in { testRecursion(new EventWorld()) }
+    "for StoreWorld" in { testRecursion(new StoreWorld()) }
   }
 }

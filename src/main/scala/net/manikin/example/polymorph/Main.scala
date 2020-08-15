@@ -2,7 +2,7 @@ package net.manikin.example.polymorph
 
 object Main {
   import net.manikin.core.TransObject._
-  import net.manikin.core.context.EventContext._
+  import net.manikin.core.context.EventWorld._
   import net.manikin.core.MutableValue._
 
   trait State extends MValue {
@@ -46,7 +46,7 @@ object Main {
   }
 
   trait ID[+O <: State] extends Id[O] {
-    type C = Context
+    type C = World
 
     val id: Long
     def setName(name: String)(implicit c: C): Unit = this ! new SetName[O](name)
@@ -77,7 +77,7 @@ object Main {
   }
   
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new EventContext()
+    implicit val ctx = new EventWorld()
 
     val a = IdA(1)
     val b = IdB(1)

@@ -1,19 +1,19 @@
 package net.manikin.core.context
 
-object ObjectContext {
-  import net.manikin.core.TransObject.{Context, FailureException, Id, Message, MessageContext, VObject}
-  import net.manikin.core.context.EventContext.{PostFailed, PreFailed}
+object ObjectWorld {
+  import net.manikin.core.TransObject.{World, FailureException, Id, Message, MessageContext, VObject}
+  import net.manikin.core.context.EventWorld.{PostFailed, PreFailed}
   import net.manikin.core.context.Store._
   import net.manikin.core.TransObject.ST
   import scala.collection.immutable.HashMap
 
-  class ObjectContext() extends Context {
+  class ObjectWorld() extends World {
     var prev: ST = HashMap()
     var current: ST = HashMap()
     var failures = HashMap[Id[_], Int]()
 
     def state: Map[Id[_], VObject[_]] = current
-    def withState(m: Map[Id[_], VObject[_]]): ObjectContext = {
+    def withState(m: Map[Id[_], VObject[_]]): ObjectWorld = {
       failures = HashMap()
       prev = Map()
       current = m

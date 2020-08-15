@@ -4,7 +4,7 @@ object Factorial {
   import net.manikin.core.context.store.slick.postgres.PostgresStore._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
-  import net.manikin.core.context.StoreContext._
+  import net.manikin.core.context.StoreWorld._
   import net.manikin.core.state.StateObject._
 
   case class Factorial(arg: Long) extends StateId[Long] {
@@ -43,8 +43,8 @@ object Factorial {
     val store = new PostgresStore(tx_uuid = 1)
     val store2 = new PostgresStore(tx_uuid = 2)
     
-    val tx1 = Transactor(new StoreContext(store))
-    val tx2 = Transactor(new StoreContext(store2))
+    val tx1 = Transactor(new StoreWorld(store))
+    val tx2 = Transactor(new StoreWorld(store2))
     
     val r1 = tx1.commit(TId(), Calculate(Factorial(5)))
     println("Factorial(5): " + r1)

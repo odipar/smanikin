@@ -3,7 +3,7 @@ package net.manikin.example.bank
 import net.manikin.serialization.SerializationUtils
 
 object ConsistencyTest {
-  import net.manikin.core.context.StoreContext.StoreContext
+  import net.manikin.core.context.StoreWorld.StoreWorld
   import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
   import net.manikin.core.context.store.slick.h2.H2Store.H2Store
   import net.manikin.core.context.Transactor._
@@ -33,10 +33,10 @@ object ConsistencyTest {
       
     db1.tryToCreateSchema()
 
-    val t1 = Transactor(new StoreContext(db1))
-    val t2 = Transactor(new StoreContext(db2))
-    val t3 = Transactor(new StoreContext(db3))
-    val t4 = Transactor(new StoreContext(db4))
+    val t1 = Transactor(new StoreWorld(db1))
+    val t2 = Transactor(new StoreWorld(db2))
+    val t3 = Transactor(new StoreWorld(db3))
+    val t4 = Transactor(new StoreWorld(db4))
     
     var f1: Long = 0; var f2: Long =0 ; var f3: Long = 0
 

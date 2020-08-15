@@ -2,7 +2,7 @@ package net.manikin.example.bank
 
 object AccountHolder {
   import net.manikin.core.state.StateObject._
-  import net.manikin.core.context.StoreContext.StoreContext
+  import net.manikin.core.context.StoreWorld.StoreWorld
   import IBAN._
 
   case class AccountId(iban: IBAN) extends StateId[AccountState] { def initData = AccountState() }
@@ -81,7 +81,7 @@ object AccountHolder {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new StoreContext()
+    implicit val ctx = new StoreWorld()
 
     val h1 = HolderId("h1")
     val h2 = HolderId("h2")

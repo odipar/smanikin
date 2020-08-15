@@ -24,7 +24,7 @@ object InMemoryStore {
             val msg = snd.message
 
             // inject replay context and this
-            msg.msgContext = MessageContext(id, ReplayContext(id, v_obj))
+            msg.msgContext = MessageContext(id, ReplayWorld(id, v_obj))
 
             // apply event
             v_obj = VObject(v_obj.version + 1, snd.vid.serial_id, msg.app)

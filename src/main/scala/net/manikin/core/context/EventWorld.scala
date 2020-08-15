@@ -1,12 +1,12 @@
 package net.manikin.core.context
 
-object EventContext {
+object EventWorld {
   import Store._
   import net.manikin.core.TransObject._
   import scala.collection.immutable.HashMap
 
-  // A EventContext keeps track of (historical) Object states and Message dispatches
-  class EventContext extends Context {
+  // A EventWorld keeps track of (historical) Object states and Message dispatches
+  class EventWorld extends World {
     protected var level = 0
     protected var prev: ST = HashMap()
     protected var current: ST = HashMap()

@@ -62,7 +62,7 @@ object H2Store {
           val version = evt._6
 
           // insert context into message
-          msg.msgContext = MessageContext(id, ReplayContext(id, VObject(version, serial_id, v_obj.obj)))
+          msg.msgContext = MessageContext(id, ReplayWorld(id, VObject(version, serial_id, v_obj.obj)))
 
           v_obj = VObject(version + 1, serial_id, msg.app)
         }

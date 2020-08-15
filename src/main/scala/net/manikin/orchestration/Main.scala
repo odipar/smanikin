@@ -1,16 +1,16 @@
 package net.manikin.orchestration
 
-import net.manikin.core.context.StoreContext.StoreContext
+import net.manikin.core.context.StoreWorld.StoreWorld
 import net.manikin.core.context.store.slick.postgres.PostgresStore.PostgresStore
 
 object Main {
-  import net.manikin.core.context.ObjectContext.ObjectContext
+  import net.manikin.core.context.ObjectWorld.ObjectWorld
 
   trait IntTask extends Process.Task[Int]
 
   def main(args: Array[String]): Unit = {
     val store = new PostgresStore(tx_uuid = 1)
-    implicit val c = new StoreContext(store)
+    implicit val c = new StoreWorld(store)
 
     val s = Scheduler.Id("s1") // The Scheduler will schedule two Processes
 

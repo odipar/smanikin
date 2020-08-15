@@ -3,7 +3,7 @@ package net.manikin.modelchecking
 
 object Main {
   import net.manikin.core.TransObject._
-  import net.manikin.core.context.ObjectContext.ObjectContext
+  import net.manikin.core.context.ObjectWorld.ObjectWorld
   import net.manikin.example.bank._
   import net.manikin.example.bank.IBAN.IBAN
   import net.manikin.serialization.SerializationUtils
@@ -23,7 +23,7 @@ object Main {
 
     val msgGenerator = msgSend(accounts, accountMsg) ++ msgSend(transfers, transferMsg(accounts))
     
-    val ctx = new ObjectContext()
+    val ctx = new ObjectWorld()
 
     val seen = mutable.HashSet[ST]()
     val queue = mutable.Queue[ST]()
@@ -81,7 +81,7 @@ object Main {
 
   val initialAmount = 10
 
-  def checkNoMoneyLostInvariant(state: ST, ctx: ObjectContext): Boolean = {
+  def checkNoMoneyLostInvariant(state: ST, ctx: ObjectWorld): Boolean = {
     val opened_and_closed = state.keys.
       filter(_.isInstanceOf[Account.Id]).
       map(x => ctx.withState(state)(x.asInstanceOf[Account.Id]).obj).
@@ -95,7 +95,7 @@ object Main {
   }
 
   case class MsgSend[I <: Id[O], O, +R](id: I, msg: Message[I, O, R]) {
-    def apply(implicit c: Context) = id ! msg
+    def apply(implicit c: World) = id ! msg
   }
 
   def accountMsg = Seq(Account.Open(initialAmount), Account.Close(), Account.ReOpen())

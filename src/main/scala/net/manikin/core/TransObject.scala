@@ -9,16 +9,16 @@ object TransObject {
   trait Id[+O] {
     def init: O
 
-    def failures(implicit ctx: Context): Int = ctx.failures(this)
-    def version(implicit ctx: Context): Long = ctx(this).version
-    def old_version(implicit ctx: Context): Long = ctx.previous(this).version
+    def failures(implicit ctx: World): Int = ctx.failures(this)
+    def version(implicit ctx: World): Long = ctx(this).version
+    def old_version(implicit ctx: World): Long = ctx.previous(this).version
 
-    def obj(implicit ctx: Context): O = ctx(this).obj
-    def old_obj(implicit ctx: Context): O = ctx.previous(this).obj
+    def obj(implicit ctx: World): O = ctx(this).obj
+    def old_obj(implicit ctx: World): O = ctx.previous(this).obj
 
     def typeString = this.init.getClass.getName.replace("$", ".")
 
-    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: Context) = ctx.send(this, msg)
+    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: World) = ctx.send(this, msg)
   }
 
   /*
@@ -36,7 +36,7 @@ object TransObject {
     // MessageContext will be injected
     @volatile private[core] var msgContext: MessageContext[_] = _
 
-    implicit def context: Context = msgContext.context
+    implicit def context: World = msgContext.world
     def self: I = msgContext.id.asInstanceOf[I]
 
     def pre: Boolean
@@ -48,7 +48,7 @@ object TransObject {
     def old_obj = self.old_obj
 
     def failures: Int = self.failures
-    
+
     def typeString : String = this.getClass.getName.replace("$", ".")
   }
 
@@ -61,11 +61,11 @@ object TransObject {
   }
 
   /*
-   * A Context acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
+   * A World acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
    * To send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
-   * A Context implementation is optionally responsible for Transactional guarantees when Messages are committed
+   * A World implementation is optionally responsible for Transactional guarantees when Messages are committed
    */
-  trait Context {
+  trait World {
     def apply[O](id: Id[O]): VObject[O]
     def previous[O](id: Id[O]): VObject[O]
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R
@@ -78,10 +78,10 @@ object TransObject {
   type ST = Map[ID, VObject[_]]
   type MV = Map[ID, Long]
 
-  // A product of an Id and a Context
-  final case class MessageContext[+O](id: Id[O], context: Context)
+  // A product of an Id and a World
+  final case class MessageContext[+O](id: Id[O], world: World)
 
-  // Objects are versioned by Contexts. VObject equality is based solely on object content, with versions ignored.
+  // Objects are versioned by Worlds. VObject equality is based solely on object content, with versions ignored.
   final case class VObject[+O](version: Long, serial_id: Long, obj: O) {
     override def equals(other: Any) = other match {
       case v: VObject[O] => obj == v.obj

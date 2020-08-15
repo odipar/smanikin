@@ -1,19 +1,19 @@
 package net.manikin.core.context
 
-object StoreContext {
+object StoreWorld {
   import Store._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.store.InMemoryStore._
-  import net.manikin.core.context.EventContext._
+  import net.manikin.core.context.EventWorld._
   import scala.collection.immutable.HashMap
 
-  // A StoreContext keeps track of (historical) Object states and Message dispatches
+  // A StoreWorld keeps track of (historical) Object states and Message dispatches
   // If an Object cannot be found via its Id, it will be fetched from the backing Store
-  class StoreContext(private val store: Store = new InMemoryStore()) extends EventContext with Cloneable {
+  class StoreWorld(private val store: Store = new InMemoryStore()) extends EventWorld with Cloneable {
     protected var state: ST = HashMap()
 
-    def copyThis(): StoreContext = this.clone().asInstanceOf[StoreContext]
-    def retry(ctx: StoreContext): Boolean = {
+    def copyThis(): StoreWorld = this.clone().asInstanceOf[StoreWorld]
+    def retry(ctx: StoreWorld): Boolean = {
       val scope = ctx.prev.keySet
 
       val old = scope.map(id => (id, ctx.state(id))).toMap

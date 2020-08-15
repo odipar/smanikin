@@ -9,7 +9,7 @@ object Store {
     def commit(reads: MV, sends: Seq[SEND]): Unit
   }
 
-  case class ReplayContext(sid: ID, obj: VObject[_]) extends Context {
+  case class ReplayWorld(sid: ID, obj: VObject[_]) extends World {
     def apply[O](id: Id[O]): VObject[O] = { if (sid == id) obj.asInstanceOf[VObject[O]] ; else error }
     def previous[O](id: Id[O]): VObject[O] = error
     def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = error

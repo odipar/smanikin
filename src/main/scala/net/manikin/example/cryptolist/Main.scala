@@ -3,7 +3,7 @@ package net.manikin.example.cryptolist
 object Main {
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
-  import net.manikin.core.context.StoreContext.StoreContext
+  import net.manikin.core.context.StoreWorld.StoreWorld
   import net.manikin.serialization.SerializationUtils._
   import scala.language.implicitConversions
 
@@ -12,7 +12,7 @@ object Main {
     def init = Nil
   }
 
-  implicit class ListOps[+X](self: ListId[X])(implicit c: Context) {
+  implicit class ListOps[+X](self: ListId[X])(implicit c: World) {
     def append[X2 >: X](x: X2) = {
       val pair = Pair(x, self)
       val id = ListId[X2](digest(pair).toIndexedSeq)
@@ -53,7 +53,7 @@ object Main {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new StoreContext()
+    implicit val ctx = new StoreWorld()
 
     val l0 = ListId()
     val l1 = l0.append(1).append(2)

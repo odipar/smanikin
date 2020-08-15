@@ -11,11 +11,11 @@ object StateObject {
     def init = StateObject(initData, "Initial")
     def initData: O
 
-    def abstractState(implicit ctx: Context): String = obj.state
-    def old_abstractState(implicit ctx: Context): String = old_obj.state
+    def abstractState(implicit ctx: World): String = obj.state
+    def old_abstractState(implicit ctx: World): String = old_obj.state
 
-    def state(implicit ctx: Context): O = obj.data
-    def old_state(implicit ctx: Context): O = old_obj.data
+    def state(implicit ctx: World): O = obj.data
+    def old_state(implicit ctx: World): O = old_obj.data
 
     override def typeString = {
       "StateObject("+this.init.data.getClass.getName.replace("$", ".")+",_)"

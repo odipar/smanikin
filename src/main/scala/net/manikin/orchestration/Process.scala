@@ -2,7 +2,7 @@ package net.manikin.orchestration
 
 // Simple Process that will process and retry Tasks in sequence
 object Process {
-  import net.manikin.core.TransObject.Context
+  import net.manikin.core.TransObject.World
   import net.manikin.core.state.StateObject.{StateId, StateMessage}
   import scala.util.Try
 
@@ -15,12 +15,12 @@ object Process {
   trait Msg[S] extends StateMessage[Id[S], State[S], S]
 
   abstract class Task[+S](name: String = "") extends Cloneable {
-    implicit var ctx: Context = _
+    implicit var ctx: World = _
     var d: Any = _
 
     def data: S = d.asInstanceOf[S]
 
-    def apply[S2 >: S](data: S2, ctx: Context): S2 = {
+    def apply[S2 >: S](data: S2, ctx: World): S2 = {
       val t = this.clone().asInstanceOf[this.type] // create throw away copy in order to not pollute the original
 
       t.d = data // inject Context and State

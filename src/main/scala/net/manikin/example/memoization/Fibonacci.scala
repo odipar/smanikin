@@ -4,7 +4,7 @@ object Fibonacci {
   import net.manikin.core.context.store.slick.postgres.PostgresStore._
   import net.manikin.core.TransObject._
   import net.manikin.core.context.Transactor._
-  import net.manikin.core.context.StoreContext._
+  import net.manikin.core.context.StoreWorld._
   import net.manikin.core.state.StateObject._
 
   case class Fibonacci(arg: Long) extends StateId[Long] {
@@ -41,8 +41,8 @@ object Fibonacci {
   def main(args: Array[String]): Unit = {
     val store = new PostgresStore() // The Transactors share the same backing Store
 
-    val tx1 = Transactor(new StoreContext(store))
-    val tx2 = Transactor(new StoreContext(store))
+    val tx1 = Transactor(new StoreWorld(store))
+    val tx2 = Transactor(new StoreWorld(store))
 
     val r1 = tx1.commit(TId(), Calculate(Fibonacci(20))) // re-uses the internal memoized version of Fibonacci
     println("Fibonacci(20): " + r1)
