@@ -8,7 +8,7 @@ Manikin is heavily inspired by the [Eiffel](https://www.eiffel.com) programming 
 Messages are dispatched via Worlds which are then functionally updated and passed through after each (nested) dispatch.
 Because Worlds keep track of all intermediate and previous Object states, it is very easy to rollback state in case of failure, or to retry Transactions after conflicts. 
 
-### Distributed Transactions
+### Concurrent and Distributed Worlds
 Manikin can also be configured to run on top of multi-threaded, concurrent or distributed Worlds - backed by databases such as [CockroachDB](https://www.cockroachlabs.com) - with strong [Serializability](https://en.wikipedia.org/wiki/Serializability) guarantees.  
                                                            
 ### Syntax and types
@@ -18,7 +18,7 @@ Additionally, Manikin reduces the amount of boilerplate code, by minimal use of 
 Here is a simple Bank Transfer example, written in the Manikin DSL:
 ```scala
 object SimpleTransfer {
-  import net.manikin.core.context.Eventworld._
+  import net.manikin.core.context.EventWorld._
   import IBAN._
   import scala.language.implicitConversions
 
