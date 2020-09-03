@@ -24,7 +24,7 @@ object ObjectWorld {
     def apply[O](id: Id[O]): VObject[O] = current.getOrElse(id, previous(id)).asInstanceOf[VObject[O]]
     def previous[O](id: Id[O]): VObject[O] = prev.getOrElse(id, latest(id)).asInstanceOf[VObject[O]]
 
-    def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
+    def commit[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
       val old_obj = apply(id)
       val old_vid = VId(old_obj.version, old_obj.serial_id, id)
 

@@ -8,8 +8,8 @@ object StateObject {
 
   // A StateId identifies a StateObject
   trait StateId[+O] extends Id[StateObject[O]] {
-    def init = StateObject(initData, "Initial")
-    def initData: O
+    def init = StateObject(initState, "Initial")
+    def initState: O
 
     def abstractState(implicit ctx: World): String = obj.state
     def old_abstractState(implicit ctx: World): String = old_obj.state

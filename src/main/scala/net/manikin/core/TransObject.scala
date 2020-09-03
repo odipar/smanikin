@@ -1,6 +1,5 @@
 package net.manikin.core
 
-import net.manikin.core.TransObject.Id
 
 object TransObject {
   import scala.language.implicitConversions
@@ -18,7 +17,7 @@ object TransObject {
 
     def typeString = this.init.getClass.getName.replace("$", ".")
 
-    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: World) = ctx.send(this, msg)
+    def ![O2 >: O, R](msg: Message[Id[O2], O2, R])(implicit ctx: World) = ctx.commit(this, msg)
   }
 
   /*
@@ -62,18 +61,18 @@ object TransObject {
 
   /*
    * A World acts as a 'memory' to resolve Ids to Objects, and tracks all (versioned) Objects
-   * To send a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
+   * To send/commit a Message to an Object, there MUST always be an implicit Context in scope (Scala magic)
    * A World implementation is optionally responsible for Transactional guarantees when Messages are committed
    */
   trait World {
     def apply[O](id: Id[O]): VObject[O]
     def previous[O](id: Id[O]): VObject[O]
-    def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R
+    def commit[O, R](id: Id[O], message: Message[Id[O], O, R]): R
 
     def failures[O](id: Id[O]): Int
   }
 
-  // Some convenient type defs
+  // Some convenient type definitions
   type ID = Id[_]
   type ST = Map[ID, VObject[_]]
   type MV = Map[ID, Long]

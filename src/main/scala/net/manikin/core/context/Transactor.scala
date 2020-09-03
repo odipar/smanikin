@@ -13,7 +13,7 @@ object Transactor {
       val new_context = ctx.copyThis()
 
       try {
-        val result = new_context.send(id, message)
+        val result = new_context.commit(id, message)
         new_context.commit()
         ctx = new_context
         result
@@ -53,45 +53,17 @@ object Transactor {
       def effect(current: World): (Result, World)
       def postCondition(previous: World, current: World): Boolean
     }
-    
-    trait World extends Map[Id, State] {
+
+    trait World {
       def self: Id
-      def send(id: Id, msg: Message): World
 
-      def commit(other: World): World
-      def refresh(from: World, ids: Set[Id]): World
-      
+      def apply(id: Id): (State, World)
+      def commit(id: Id, msg: Message): (Result, World)
+
+      def merge(other: World): World
+      def update(from: World, ids: Set[Id]): World
+
       def parents: Set[World]
-    }
-
-    trait ErrorWorld extends World {
-      def error: Throwable
-    }
-  }
-  
-  object A_Typed_Purely_Functional_Model_Of_Manikin {
-    trait Id[S] {
-      def initialState: S
-    }
-
-    trait Message[I <: Id[S], S, R] {
-      def preCondition(current: World[S]): Boolean
-      def apply(current: S): S
-      def effect(current: World[S]): (R, World[S])
-      def postCondition(previous: World[S], current: World[S]): Boolean
-    }
-    
-    trait World[S] {
-      def self: Id[S]
-      def parent: World[_]
-      
-      def send[I <: Id[S2], S2, R](id: I, msg: Message[I, S2, R]): World[S2]
-      def commit(other: World[_]): World[S]
-      def refresh(from: World[_], ids: Set[Id[_]]): World[S]
-    }
-
-    trait ErrorWorld[S] extends World[S] {
-      def error: Throwable                       
     }
   }
 }

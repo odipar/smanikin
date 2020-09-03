@@ -50,7 +50,7 @@ object Account {
   import net.manikin.core.state.StateObject._
   import IBAN._
 
-  case class Id  (iban: IBAN) extends StateId[State] { def initData = State() }
+  case class Id  (iban: IBAN) extends StateId[State] { def initState = State() }
   case class State(balance: Long = 0) // in cents
 
   trait Msg extends StateMessage[Id, State, Unit]
@@ -100,7 +100,7 @@ object Account {
 object Transfer {
   import net.manikin.core.state.StateObject._
 
-  case class Id  (id: Long) extends StateId[State] { def initData = State() }
+  case class Id  (id: Long) extends StateId[State] { def initState = State() }
   case class State(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
 
   trait Msg extends StateMessage[Id, State, Unit]

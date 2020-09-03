@@ -5,11 +5,11 @@ object AccountHolder {
   import net.manikin.core.context.StoreWorld.StoreWorld
   import IBAN._
 
-  case class AccountId(iban: IBAN) extends StateId[AccountState] { def initData = AccountState() }
+  case class AccountId(iban: IBAN) extends StateId[AccountState] { def initState = AccountState() }
   case class AccountState(balance: Long = 0, minimum: Long = 0, holder: HolderId = null)
 
   case class HolderId(id: String) extends StateId[HolderData] {
-    def initData = HolderData()
+    def initState = HolderData()
   }
 
   case class HolderData(accounts: Set[AccountId] = Set())
@@ -23,7 +23,7 @@ object AccountHolder {
   
   trait HolderMessage extends StateMessage[HolderId, HolderData, Unit]
   
-  case class TransferId(id: Long) extends StateId[TransferState] { def initData = TransferState() }
+  case class TransferId(id: Long) extends StateId[TransferState] { def initState = TransferState() }
   case class TransferState(from: AccountId = null, to: AccountId = null, amount: Long = 0)
 
   trait TransferMessage extends StateMessage[TransferId, TransferState, Unit] {

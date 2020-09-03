@@ -4,7 +4,7 @@ object Account {
   import net.manikin.core.state.StateObject._
   import IBAN._
 
-  case class Id  (iban: IBAN) extends StateId[State] { def initData = State() }
+  case class Id  (iban: IBAN) extends StateId[State] { def initState = State() }
   case class State(balance: Long = 0) // in cents
 
   trait Msg extends StateMessage[Id, State, Unit]

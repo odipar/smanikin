@@ -3,7 +3,7 @@ package net.manikin.example.bank
 object Transfer {
   import net.manikin.core.state.StateObject._
 
-  case class Id  (id: Long) extends StateId[State] { def initData = State() }
+  case class Id  (id: Long) extends StateId[State] { def initState = State() }
   case class State(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
 
   trait Msg extends StateMessage[Id, State, Unit]

@@ -8,7 +8,7 @@ object Factorial {
   import net.manikin.core.state.StateObject._
 
   case class Factorial(arg: Long) extends StateId[Long] {
-    def initData = -1
+    def initState = -1
   }
 
   case class Calculate(f: Factorial) extends Transaction[Long] {

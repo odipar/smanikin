@@ -8,7 +8,7 @@ object Fibonacci {
   import net.manikin.core.state.StateObject._
 
   case class Fibonacci(arg: Long) extends StateId[Long] {
-    def initData = -1
+    def initState = -1
   }
 
   case class Calculate(f: Fibonacci) extends Transaction[Long] {

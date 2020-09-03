@@ -19,7 +19,7 @@ object EventWorld {
     def previous[O](id: Id[O]): VObject[O] = vobj(prev.getOrElse(id, latestVersion(id)))
     def apply[O](id: Id[O]): VObject[O] = vobj(current.getOrElse(id, previous(id)))
 
-    def send[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
+    def commit[O, R](id: Id[O], message: Message[Id[O], O, R]): R = {
       val vobj = apply(id)
       if (vobj.version > 0 && (vobj.version % 10) == 0) { // snapshot after 100 events
         send2(id, Snapshot(vobj.obj))

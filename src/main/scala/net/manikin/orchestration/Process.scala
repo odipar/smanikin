@@ -7,7 +7,7 @@ object Process {
   import scala.util.Try
 
   case class Id[+S](id: String, initial: S) extends StateId[State[S]] {
-    def initData = State(processData = initial)
+    def initState = State(processData = initial)
   }
 
   case class State[+S](processData: S, step: Int = 0, failures: Int = 0, steps: Seq[Task[S]] = Seq())
