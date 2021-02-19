@@ -4,311 +4,153 @@ object Main {
 
   trait Id[+O] {
     def init: O
-
-    def v_obj(implicit c: MutableContext): VObj[O] = c.read(this)
-    def old_v_obj(implicit c: MutableContext): VObj[O] = c.read_old(this)
-
-    def obj(implicit c: MutableContext): O = c.read(this).obj
-    def old_obj(implicit c: MutableContext): O = c.read_old(this).obj
-
-    def ![O2 >: O, R](msg: Msg[Id[O2], O2, R])(implicit c: MutableContext) = c.send(this, msg)
   }
 
-  trait VObj[+O] {
-    def obj: O
-    def version: Long
-    def fingerPrint: Int
+  trait Msg[I <: Id[O], O, +R, C <: Context[C]]{
+    type V[+X] = CVal[X, C]
+
+    def preCondition: V[I] => V[Boolean]
+    def apply: V[I] => V[O]
+    def effect: V[I] => V[R]
+    def postCondition: V[I] => V[Boolean]
   }
 
-  case class DefaultVObj[+O](obj: O, version: Long, fingerPrint: Int) extends VObj[O]
+  trait Context[C <: Context[C]] {
+    type V[+X] = CVal[X, C]
 
-  trait Msg[+I <: Id[O], O, +R] {
-    var _ctx: MutableSelfContext[_ <: Id[O], O] = _
-    implicit def ctx: MutableSelfContext[I, O] = _ctx.asInstanceOf[MutableSelfContext[I, O]]
+    def apply[O](id: Id[O]): V[O]
+    def previous[O](id: Id[O]): V[O]
+    def send[I <: Id[O], O, R](id: I, msg: Msg[I, O, R, C]): V[R]
+  }
 
-    def self: I = ctx.self
-    def obj: O = self.obj
-    def old_obj: O = self.old_obj
+  case class CVal[+R, C <: Context[C]](value: R, context: C) extends Context[C] {
+    def apply[O](id: Id[O]): V[O] = context(id)
+    def previous[O](id: Id[O]): V[O] = context.previous(id)
+    def send[I <: Id[O], O, R2](id: I, msg: Msg[I, O, R2, C]): V[R2] = context.send(id, msg)
+  }
 
+  val cVal = new ThreadLocal[CVal[_, _]]
+
+  trait CMsg[I <: Id[O], O, +R, C <: Context[C]] extends Msg[I, O, R, C] {
+    def preCondition2: Boolean
+    def apply2: O
+    def effect2: R
+    def postCondition2: Boolean
+
+    def preCondition = c => s(c, preCondition2)
+    def apply = c => s(c, apply2)
+    def effect = c => s(c, effect2)
+    def postCondition = c => s(c, postCondition2)
+
+    def context: C = get().context
+    def self: I = get().value
+    def obj: O = ss(context(self))
+    def prev: O = ss(context.previous(self))
+
+    def get(): V[I] = cVal.get().asInstanceOf[V[I]]
+    def set(c: V[I]): Unit = cVal.set(c)
+
+    def prev[O2, R2](id: Id[O2]): O2 = ss(context.previous(id))
+    def apply[O2, R2](id: Id[O2]): O2 = ss(context(id))
+    def send[I2 <:Id[O2], O2, R2](id: I2, msg: Msg[I2, O2, R2, C]): R2 = ss(context.send(id, msg))
+
+    def ss[X](f:  => CVal[X, C]): X = { val s = self ; val result = f ; set(CVal(s, result.context)) ; result.value }
+    def s[X](c: V[I], f:  => X): V[X] = {
+      try { set(c) ; val result = f ; val cc = context ; CVal(result, cc) }
+      finally { set(null) } // ALWAYS clean local thread var to prevent leakage }
+    }
+  }
+
+  trait AMsg[I <: Id[O], O, +R, C <: Context[C]] extends CMsg[I, O, R, C] {
     def pre: Boolean
     def app: O
     def eff: R
     def pst: Boolean
+
+    def preCondition2: Boolean = pre
+    def apply2: O = app
+    def effect2: R = eff
+    def postCondition2: Boolean = pst
   }
 
-  trait Context
-
-  trait MutableContext extends Context {
-    def branch: MutableContext
-    def read[O](id: Id[O]): VObj[O]
-    def read_old[O](id: Id[O]): VObj[O]
-    def send[O, R](id: Id[O], message: Msg[Id[O], O, R]): R
+  trait AId[+O] extends Id[O] {
+    def ini: O
+    def init: O = ini
   }
 
-  class DefaultMutableContext(val init: World) extends MutableContext with Cloneable {
-    var old: World = init
-    var current: World = init
-
-    private def copySelf: DefaultMutableContext = this.clone().asInstanceOf[DefaultMutableContext]
-
-    def branch: MutableContext = { val s = copySelf ; s.current = s.current.branch ; s }
-    def read[O](id: Id[O]): VObj[O] = { val (obj, w2) = current.read(id) ; current = w2 ; obj }
-    def read_old[O](id: Id[O]): VObj[O] = { val (obj, w2) = old.read(id) ; old = w2 ; obj }
-    def send[O, R](id: Id[O], message: Msg[Id[O], O, R]): R = {
-      val (result, w2) = current.send(id, message) ; current = w2 ; result
-    }
-
-    def withCurrent(w: World): Unit = { old = init ; current = w }
-  }
-
-  trait MutableSelfContext[+I <: Id[O], O] extends MutableContext {
-    def self: I
-  }
-
-  class DefaultMutableSelfContext[+I <: Id[O], O](val self: I, init: World)
-    extends DefaultMutableContext(init) with MutableSelfContext[I, O]
-
-  type STATE = Map[Id[_], VObj[_]]
-
-  trait World {
-    def read[O](id: Id[O]): (VObj[O], World)
-    def send[O, R](id: Id[O], message: Msg[Id[O], O, R]): (R, World)
-
-    def branch: World
-    def merge(other: World): World
-
-    def actions: Vector[ACTION[_]]
-    def latest(state: STATE): STATE
-  }
-
-  def vobj[O](id: Id[O]): VObj[O] = {
-    val obj = id.init
-    DefaultVObj(obj, 0, obj.hashCode())
-  }
-
-  import scala.util.hashing.MurmurHash3._
-
-  case class DefaultWorld(parent: World = null, state: STATE = Map(), actions: Vector[ACTION[_]] = Vector()) extends World {
-    def branch: World = DefaultWorld(this, Map(), Vector())
-    def get[O](id: Id[O]): VObj[O] = state.getOrElse(id, vobj(id)).asInstanceOf[VObj[O]]
-    def read[O](id: Id[O]): (VObj[O], World) = read2(id)
-    def read2[O](id: Id[O]): (VObj[O], DefaultWorld) = {
-      val v_obj = {
-        if (!state.contains(id) && parent != null) parent.latest(Map(id -> get(id)))(id).asInstanceOf[VObj[O]]
-        else get(id)
-      }
-      val read = DefaultRead[Id[O], O](id, v_obj.version, v_obj.fingerPrint)
-      (v_obj, this.copy(state = state + (id -> v_obj), actions = actions :+ read))
-    }
-    def send[O, R](id: Id[O], message: Msg[Id[O], O, R]): (R, World) = {
-      val (old_v_obj, latest) = read2(id)
-      val read_only_world = ReadOnlyWrapper(latest.branch)
-
-      val c = new DefaultMutableSelfContext[Id[O], O](id, read_only_world)
-      message._ctx = c
-
-      if (!message.pre) throw new RuntimeException("Pre failed")
+  case class SimpleContext(prev: SimpleContext = null, state: Map[Id[_], _] = Map()) extends Context[SimpleContext] {
+    def previous[O](id: Id[O]): V[O] = CVal(prev(id).value, this)
+    def apply[O](id: Id[O]): V[O] = CVal(state.getOrElse(id, id.init).asInstanceOf[O], this)
+    def send[I <: Id[O], O, R](id: I, msg: Msg[I, O, R, SimpleContext]): V[R] = {
+      if (!msg.preCondition(CVal(id, this)).value) throw sys.error("Pre failed")
       else {
-        val preReadActions = (c.old.actions ++ c.current.actions).map(_.asInstanceOf[READ[_]]) // only reads allowed
-
-        c.withCurrent(read_only_world)
-        val new_obj = message.app
-        val appReadActions = (c.old.actions ++ c.current.actions).map(_.asInstanceOf[READ[_]]) // only reads allowed
-        if (!appReadActions.forall(_.id == id)) throw new RuntimeException("app may only read itself")
-
-        val new_state = state + (id -> DefaultVObj(new_obj, old_v_obj.version + 1, mix(old_v_obj.fingerPrint, message.hashCode())))
-        c.withCurrent(DefaultWorld(this, new_state, Vector()))
-        val result = message.eff
-        val effActions = c.old.actions.map(_.asInstanceOf[READ[_]]) ++ c.current.actions // only read actions in old
-
-        c.withCurrent(ReadOnlyWrapper(c.current))
-
-        if (!message.pst) throw new RuntimeException("Post failed")
-        else {
-          val pstActions = (c.old.actions ++ c.current.actions).map(_.asInstanceOf[READ[_]]) // only reads allowed
-          val send = DefaultSend(id, old_v_obj.version, old_v_obj.fingerPrint, message, preReadActions, effActions, result, pstActions)
-          val sub_state = c.current.latest(send.minWrites.map(_.id).map(id => (id, get(id))).toMap)
-
-          (result, latest.copy(state = new_state ++ sub_state, actions = actions :+ send))
-        }
+        val eff = msg.effect(CVal(id, SimpleContext(this, state + (id -> msg.apply(CVal(id, this)).value))))
+        if (msg.postCondition(CVal(id, SimpleContext(this, eff.context.state))).value) eff
+        else throw sys.error("Post failed")
       }
     }
-
-    def merge(other: World): World = {
-      val size = actions.size
-      val other_actions = other.actions
-      val other_size = other_actions.size
-
-      var i = 0
-
-      // common prefix (ancestor actions)
-      while (i < other_size && i < size && actions(i) == other_actions(i)) { i += 1 }
-
-      // non common postfix (divergent actions)
-      val postfix_actions = other_actions.splitAt(i)._2
-
-      val minReads = minVIds(postfix_actions.flatMap(_.minReads))
-      val minWrites = minVIds(postfix_actions.flatMap(_.minWrites))
-
-      if ((minReads ++ minWrites).exists{p =>
-        val v_obj = get(p.id)
-        v_obj.version != p.version || v_obj.fingerPrint != p.fingerPrint
-      }) throw new RuntimeException("CANNOT MERGE")
-
-      val sub_state = other.latest(minWrites.map(_.id).map(id => (id, get(id))).toMap)
-
-      DefaultWorld(this, state ++ sub_state, actions ++ postfix_actions)
-    }
-
-    def latest(other: STATE): STATE = {
-      other.keys.map { id =>
-        val v_obj = {
-          if (!state.contains(id) && parent != null) parent.latest(Map(id -> get(id)))(id)
-          else get(id)
-        }
-        (id, v_obj)
-      }.toMap
-    }
   }
 
-  case class ReadOnlyWrapper(other: World, actions: Vector[READ[_]]= Vector()) extends World {
-    def branch: World = throw new RuntimeException("Cannot branch Read Only World")
-    def read[O](id: Id[O]): (VObj[O], World) = {
-      val (v_obj, n_other) = other.read(id)
-      (v_obj, ReadOnlyWrapper(n_other, actions :+ DefaultRead[Id[O], O](id, v_obj.version, v_obj.fingerPrint)))
-    }
-    def send[O, R](id: Id[O], message: Msg[Id[O], O, R]): (R, World) = throw new RuntimeException("Cannot send to Read Only World")
-    def merge(other: World): World = throw new RuntimeException("Cannot merge to Read Only World")
-    def latest(state: STATE): STATE = other.latest(state)
+  trait SMsg[I <: Id[O], O] extends AMsg[I, O, Unit, SimpleContext]
+
+  case class AccountId(IBAN: String) extends AId[Account] {
+    def ini = Account()
   }
 
-  case class VId[+O](id: Id[O], version: Long, fingerPrint: Int)
+  case class Account(balance: Double = 0.0)
 
-  trait Action[+I <: Id[O], O] {
-    def id: I
-    def version: Long
-    def fingerPrint: Int
-
-    def minReads: Set[VId[_]]
-    def minWrites: Set[VId[_]]
-  }
-
-  trait Read[+I <: Id[O], O] extends Action[I, O] {
-    def minWrites = Set()
-  }
-
-  def minVIds(seq: Seq[VId[_]]): Set[VId[_]] = seq.groupBy(_.id).map(_._2.minBy(_.version)).toSet
-
-  trait Send[+I <: Id[O], O, +R] extends Action[I, O] {
-    def message: Msg[I, O, R]
-    def preActions: Seq[READ[_]]
-    def effActions: Seq[ACTION[_]]
-    def pstActions: Seq[READ[_]]
-  }
-
-  case class DefaultRead[+I <: Id[O], O](id: I, version: Long, fingerPrint: Int) extends Read[I, O] {
-    def minReads = Set(VId(id, version, fingerPrint))
-  }
-
-  case class DefaultSend[+I <: Id[O], O, +R](
-    id: I,
-    version: Long,
-    fingerPrint: Int,
-    message: Msg[I, O, R],
-    preActions: Seq[READ[_]],
-    effActions: Seq[ACTION[_]],
-    effResult: R,
-    pstActions: Seq[READ[_]]
-  ) extends Send[I, O, R] {
-    def minReads = minVIds(VId(id, version, fingerPrint) +: (preActions ++ effActions ++ pstActions).flatMap(_.minReads))
-    def minWrites = minVIds(VId(id, version, fingerPrint) +: effActions.flatMap(_.minWrites))
-  }
-
-  type READ[O] = Read[_ <: Id[O], O]
-  type SEND[O] = Send[_ <: Id[O], O, _]
-  type ACTION[O] = Action[_ <: Id[O], O]
-
-  case class AccountId(iban: String) extends Id[Account] {
-    def init = Account()
-  }
-  case class TransferId(id: Long) extends Id[Transfer] {
-    def init = Transfer()
-  }
-
-  case class Account(balance: Long = 0)
-  case class Transfer(from: AccountId = null, to: AccountId = null, amount: Long = 0)
-
-  trait AccountMsg extends Msg[AccountId, Account, Unit]
-  trait TransferMsg extends Msg[TransferId, Transfer, Unit]
-
-  case class OpenAccount(initial: Long) extends AccountMsg {
-    def pre = initial > 0
-    def app = obj.copy(balance = initial)
+  case class Open(init: Double) extends SMsg[AccountId, Account] {
+    def pre = init > 0.0
+    def app = Account(init)
     def eff = { }
-    def pst = obj.balance == initial
+    def pst = obj.balance == init
   }
 
-  case class Withdraw(amount: Long) extends AccountMsg {
-    def pre = obj.balance >= amount && amount > 0
-    def app = obj.copy(balance = obj.balance - amount)
+  case class Withdraw(amount: Double) extends SMsg[AccountId, Account]  {
+    def pre = amount > 0.0 && obj.balance >= amount
+    def app = Account(obj.balance - amount)
     def eff = { }
-    def pst = obj.balance == old_obj.balance - amount
+    def pst = obj.balance == prev.balance - amount
   }
 
-  case class Deposit(amount: Long) extends AccountMsg {
-    def pre = amount > 0
-    def app = obj.copy(balance = obj.balance + amount)
+  case class Deposit(amount: Double) extends SMsg[AccountId, Account]  {
+    def pre = amount > 0.0
+    def app = Account(obj.balance + amount)
     def eff = { }
-    def pst = obj.balance == old_obj.balance + amount
+    def pst = obj.balance == prev.balance + amount
   }
 
-  case class Book(from: AccountId, to: AccountId, amount: Long) extends TransferMsg {
-    def pre = from != to && amount > 0
-    def app = obj.copy(from = from, to = to, amount = amount)
-    def eff = { from ! Withdraw(amount) ; to ! Deposit(amount) }
-    def pst = from.old_obj.balance + to.old_obj.balance == from.obj.balance + to.obj.balance
+  case class TransferId(id: Long) extends AId[Transfer] {
+    def ini = Transfer()
   }
 
-  case class Factorial(f: BigInt) extends Id[BigInt] {
-    def init = 1
-  }
+  case class Transfer(from: AccountId = null, to: AccountId = null, amount: Double = 0.0)
 
-  case class Calculate(c: BigInt = 1) extends Msg[Factorial, BigInt, Unit] {
-    def pre = true
-    def app = obj * c
-    def eff = if (c < self.f) self ! Calculate(c + 1)
-    def pst = obj == old_obj * (c to self.f).product
+  case class Book(from: AccountId, to: AccountId, amount: Double) extends SMsg[TransferId, Transfer] {
+    def pre = amount >= 0.0
+    def app = Transfer(from, to, amount)
+    def eff = { send(from, Withdraw(amount)) ; send(to, Deposit(amount)) }
+    def pst = this(from).balance + this(to).balance == prev(from).balance + prev(to).balance
   }
 
   def main(args: Array[String]): Unit = {
-    implicit var w = new DefaultMutableContext(DefaultWorld())
-
     val a1 = AccountId("A1")
     val a2 = AccountId("A2")
     val t1 = TransferId(1)
 
-    val a3 = AccountId("A3")
-    val a4 = AccountId("A4")
-    val t2 = TransferId(2)
+    try {
+      val c2 = SimpleContext().
+        send(a1, Open(50)).
+        send(a2, Open(80)).
+        send(t1, Book(a1, a2, 30))
 
-    a1 ! OpenAccount(100)
-    a2 ! OpenAccount(50)
+      println("c2: " + c2.context.state)
+    }
+    catch {
+      case e: Exception => e.printStackTrace()
+    }
 
-    val w0 = w.current
-
-    w = new DefaultMutableContext(DefaultWorld())
-
-    a3 ! OpenAccount(40)
-    a4 ! OpenAccount(60)
-    a4 ! Withdraw(30)
-    val w2 = w.current
-    
-    println("w0: " + w0.actions)
-    println("w2: " + w2.actions)
-    
-    w.current = w0.merge(w2)
-
-    println("w3: " + a1.obj)
-    w.current
+    println("var: " + cVal.get())
   }
 }
+
