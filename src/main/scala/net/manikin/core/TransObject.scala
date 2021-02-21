@@ -1,9 +1,8 @@
 package net.manikin.core
 
-
 object TransObject {
   import scala.language.implicitConversions
-  
+
   // An Id that identifies an Object O
   trait Id[+O] {
     def init: O
@@ -96,7 +95,7 @@ object TransObject {
   case class FailureException(f: Failure) extends Exception {
     override def toString = "FailureException(" + f + ")"
   }
-  
+
   case class ExceptionFailure(t: Throwable) extends Failure {
     override def toString = "ExceptionFailure(" + t + ")"
   }

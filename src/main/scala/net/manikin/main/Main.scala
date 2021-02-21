@@ -6,8 +6,8 @@ object Main {
     def init: O
   }
 
-  trait Msg[I <: Id[O], O, +R, C <: Context[C]]{
-    type V[+X] = CVal[X, C]
+  trait Msg[I <: Id[O], +O, +R, W <: World[W]]{
+    type V[+X] = WVal[X, W]
 
     def preCondition: V[I] => V[Boolean]
     def apply: V[I] => V[O]
@@ -15,23 +15,23 @@ object Main {
     def postCondition: V[I] => V[Boolean]
   }
 
-  trait Context[C <: Context[C]] {
-    type V[+X] = CVal[X, C]
+  trait World[W <: World[W]] {
+    type V[+X] = WVal[X, W]
 
     def apply[O](id: Id[O]): V[O]
     def previous[O](id: Id[O]): V[O]
-    def send[I <: Id[O], O, R](id: I, msg: Msg[I, O, R, C]): V[R]
+    def send[I <: Id[O], O, R](id: I, msg: Msg[I, O, R, W]): V[R]
   }
 
-  case class CVal[+R, C <: Context[C]](value: R, context: C) extends Context[C] {
-    def apply[O](id: Id[O]): V[O] = context(id)
-    def previous[O](id: Id[O]): V[O] = context.previous(id)
-    def send[I <: Id[O], O, R2](id: I, msg: Msg[I, O, R2, C]): V[R2] = context.send(id, msg)
+  case class WVal[+R, W <: World[W]](value: R, world: W) extends World[W] {
+    def apply[O](id: Id[O]): V[O] = world(id)
+    def previous[O](id: Id[O]): V[O] = world.previous(id)
+    def send[I <: Id[O], O, R2](id: I, msg: Msg[I, O, R2, W]): V[R2] = world.send(id, msg)
   }
 
-  val cVal = new ThreadLocal[CVal[_, _]]
+  val cVal = new ThreadLocal[WVal[_, _]]
 
-  trait CMsg[I <: Id[O], O, +R, C <: Context[C]] extends Msg[I, O, R, C] {
+  trait CMsg[I <: Id[O], +O, +R, W <: World[W]] extends Msg[I, O, R, W] {
     def preCondition2: Boolean
     def apply2: O
     def effect2: R
@@ -42,26 +42,28 @@ object Main {
     def effect = c => s(c, effect2)
     def postCondition = c => s(c, postCondition2)
 
-    def context: C = get().context
+    def world: W = get().world
     def self: I = get().value
-    def obj: O = ss(context(self))
-    def prev: O = ss(context.previous(self))
+    def obj: O = ss(world(self))
+    def prev: O = ss(world.previous(self))
 
     def get(): V[I] = cVal.get().asInstanceOf[V[I]]
     def set(c: V[I]): Unit = cVal.set(c)
 
-    def prev[O2, R2](id: Id[O2]): O2 = ss(context.previous(id))
-    def apply[O2, R2](id: Id[O2]): O2 = ss(context(id))
-    def send[I2 <:Id[O2], O2, R2](id: I2, msg: Msg[I2, O2, R2, C]): R2 = ss(context.send(id, msg))
+    def prev[O2, R2](id: Id[O2]): O2 = ss(world.previous(id))
+    def apply[O2, R2](id: Id[O2]): O2 = ss(world(id))
+    def send[I2 <:Id[O2], O2, R2](id: I2, msg: Msg[I2, O2, R2, W]): R2 = ss(world.send(id, msg))
 
-    def ss[X](f:  => CVal[X, C]): X = { val s = self ; val result = f ; set(CVal(s, result.context)) ; result.value }
+    def ss[X](f:  => WVal[X, W]): X = {
+      val s = self ; val result = f ; set(WVal(s, result.world)) ; result.value
+    }
     def s[X](c: V[I], f:  => X): V[X] = {
-      try { set(c) ; val result = f ; val cc = context ; CVal(result, cc) }
+      try { set(c) ; val result = f ; val cc = world ; WVal(result, cc) }
       finally { set(null) } // ALWAYS clean local thread var to prevent leakage }
     }
   }
 
-  trait AMsg[I <: Id[O], O, +R, C <: Context[C]] extends CMsg[I, O, R, C] {
+  trait AMsg[I <: Id[O], +O, +R, W <: World[W]] extends CMsg[I, O, R, W] {
     def pre: Boolean
     def app: O
     def eff: R
@@ -78,20 +80,20 @@ object Main {
     def init: O = ini
   }
 
-  case class SimpleContext(prev: SimpleContext = null, state: Map[Id[_], _] = Map()) extends Context[SimpleContext] {
-    def previous[O](id: Id[O]): V[O] = CVal(prev(id).value, this)
-    def apply[O](id: Id[O]): V[O] = CVal(state.getOrElse(id, id.init).asInstanceOf[O], this)
-    def send[I <: Id[O], O, R](id: I, msg: Msg[I, O, R, SimpleContext]): V[R] = {
-      if (!msg.preCondition(CVal(id, this)).value) throw sys.error("Pre failed")
+  case class SimpleWorld(prev: SimpleWorld = null, state: Map[Id[_], _] = Map()) extends World[SimpleWorld] {
+    def previous[O](id: Id[O]): V[O] = WVal(prev(id).value, this)
+    def apply[O](id: Id[O]): V[O] = WVal(state.getOrElse(id, id.init).asInstanceOf[O], this)
+    def send[I <: Id[O], O, R](id: I, msg: Msg[I, O, R, SimpleWorld]): V[R] = {
+      if (!msg.preCondition(WVal(id, this)).value) throw sys.error("Pre failed")
       else {
-        val eff = msg.effect(CVal(id, SimpleContext(this, state + (id -> msg.apply(CVal(id, this)).value))))
-        if (msg.postCondition(CVal(id, SimpleContext(this, eff.context.state))).value) eff
+        val eff = msg.effect(WVal(id, SimpleWorld(this, state + (id -> msg.apply(WVal(id, this)).value))))
+        if (msg.postCondition(WVal(id, SimpleWorld(this, eff.world.state))).value) eff
         else throw sys.error("Post failed")
       }
     }
   }
 
-  trait SMsg[I <: Id[O], O] extends AMsg[I, O, Unit, SimpleContext]
+  trait SMsg[I <: Id[O], +O, W <: World[W]] extends AMsg[I, O, Unit, SimpleWorld]
 
   case class AccountId(IBAN: String) extends AId[Account] {
     def ini = Account()
@@ -99,21 +101,21 @@ object Main {
 
   case class Account(balance: Double = 0.0)
 
-  case class Open(init: Double) extends SMsg[AccountId, Account] {
+  case class Open[W <: World[W]](init: Double) extends SMsg[AccountId, Account, W] {
     def pre = init > 0.0
     def app = Account(init)
     def eff = { }
     def pst = obj.balance == init
   }
 
-  case class Withdraw(amount: Double) extends SMsg[AccountId, Account]  {
+  case class Withdraw[W <: World[W]](amount: Double) extends SMsg[AccountId, Account, W]  {
     def pre = amount > 0.0 && obj.balance >= amount
     def app = Account(obj.balance - amount)
     def eff = { }
     def pst = obj.balance == prev.balance - amount
   }
 
-  case class Deposit(amount: Double) extends SMsg[AccountId, Account]  {
+  case class Deposit[W <: World[W]](amount: Double) extends SMsg[AccountId, Account, W]  {
     def pre = amount > 0.0
     def app = Account(obj.balance + amount)
     def eff = { }
@@ -126,7 +128,7 @@ object Main {
 
   case class Transfer(from: AccountId = null, to: AccountId = null, amount: Double = 0.0)
 
-  case class Book(from: AccountId, to: AccountId, amount: Double) extends SMsg[TransferId, Transfer] {
+  case class Book[W <: World[W]](from: AccountId, to: AccountId, amount: Double) extends SMsg[TransferId, Transfer, W] {
     def pre = amount >= 0.0
     def app = Transfer(from, to, amount)
     def eff = { send(from, Withdraw(amount)) ; send(to, Deposit(amount)) }
@@ -139,12 +141,12 @@ object Main {
     val t1 = TransferId(1)
 
     try {
-      val c2 = SimpleContext().
+      val c2 = SimpleWorld().
         send(a1, Open(50)).
         send(a2, Open(80)).
         send(t1, Book(a1, a2, 30))
 
-      println("c2: " + c2.context.state)
+      println("c2: " + c2.world.state)
     }
     catch {
       case e: Exception => e.printStackTrace()
