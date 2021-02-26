@@ -1,51 +1,37 @@
 package net.manikin.example.bank
 
 object Account {
-  import net.manikin.core.state.StateObject._
-  import IBAN._
+  import net.manikin.core.Core._
+  import net.manikin.message.StateObject._
 
-  case class Id  (iban: IBAN) extends StateId[State] { def initData = State() }
-  case class State(balance: Long = 0) // in cents
+  case class Account(balance: Double = 0.0)
+  trait Msg[W <: World[W]] extends SMsg[W, Id, Account, Unit]
 
-  trait Msg extends StateMessage[Id, State, Unit]
+  case class Id(IBAN: String) extends SId[Account] {
+    def ini = Account()
+  }
 
-  case class Open(initial: Long) extends Msg {
+  case class Open[W <: World[W]](init: Double) extends Msg[W] {
     def nst = { case "Initial" => "Opened" }
-    def pre = initial > 0
-    def apl = state.copy(balance = initial)
-    def eff = { }
-    def pst = state.balance == initial
+    def pre = init > 0.0
+    def app = obj.copy(balance = init)
+    def eff = ()
+    def pst = obj.balance == init
   }
 
-  case class ReOpen() extends Msg {
-    def nst = { case "Closed" => "Opened" }
-    def pre = true
-    def apl = state
-    def eff = { }
-    def pst = true
-  }
-
-  case class Close() extends Msg {
-    def nst = { case "Opened" => "Closed" }
-    def pre = true
-    def apl = state
-    def eff = { }
-    def pst = true
-  }
-
-  case class Withdraw(amount: Long) extends Msg {
+  case class Withdraw[W <: World[W]](amount: Double) extends Msg[W] {
     def nst = { case "Opened" => "Opened" }
-    def pre = amount > 0 && state.balance >= amount
-    def apl = state.copy(balance = state.balance - amount)
-    def eff = { }
-    def pst = state.balance == old_state.balance - amount
+    def pre = amount > 0.0 && obj.balance >= amount
+    def app = obj.copy(balance = obj.balance - amount)
+    def eff = ()
+    def pst = obj.balance == old.balance - amount
   }
 
-  case class Deposit(amount: Long) extends Msg {
+  case class Deposit[W <: World[W]](amount: Double) extends Msg[W] {
     def nst = { case "Opened" => "Opened" }
-    def pre = amount > 0
-    def apl = state.copy(balance = state.balance + amount)
-    def eff = { }
-    def pst = state.balance == old_state.balance + amount
+    def pre = amount > 0.0
+    def app = obj.copy(balance = obj.balance + amount)
+    def eff = ()
+    def pst = obj.balance == old.balance + amount
   }
 }

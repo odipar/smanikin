@@ -4,6 +4,7 @@
 .metals/*
 .bloop/*
 .vscode
+.bsp
 .scalafmt.conf
 native
 project/target/*

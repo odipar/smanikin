@@ -14,103 +14,92 @@ Manikin can also be configured to run on top of multi-threaded, concurrent or di
                                                            
 ### Syntax and Types
 You can succinctly specify Objects, Identities, Messages, Conditions and Effects with Manikin *and* statically type them (as Manikin piggybacks on Scala's advanced typed system). 
-Additionally, Manikin reduces the amount of boilerplate code, by minimal use of Scala's more advanced features such as implicits. 
+Additionally, Manikin reduces the amount of boilerplate code, WITHOUT any use of Scala's more advanced features such as implicits. 
 
 Here is a simple Bank Transfer example, written in the Manikin DSL:
+
+```scala
+package net.manikin.example.bank
+
+object Account {
+  import net.manikin.core.Core._
+  import net.manikin.message.StateObject._
+
+  case class Account(balance: Double = 0.0)
+  trait Msg[W <: World[W]] extends SMsg[W, Id, Account, Unit]
+
+  case class Id(IBAN: String) extends SId[Account] {
+    def ini = Account()
+  }
+
+  case class Open[W <: World[W]](init: Double) extends Msg[W] {
+    def nst = { case "Initial" => "Opened" }
+    def pre = init > 0.0
+    def app = obj.copy(balance = init)
+    def eff = ()
+    def pst = obj.balance == init
+  }
+
+  case class Withdraw[W <: World[W]](amount: Double) extends Msg[W] {
+    def nst = { case "Opened" => "Opened" }
+    def pre = amount > 0.0 && obj.balance >= amount
+    def app = obj.copy(balance = obj.balance - amount)
+    def eff = ()
+    def pst = obj.balance == old.balance - amount
+  }
+
+  case class Deposit[W <: World[W]](amount: Double) extends Msg[W] {
+    def nst = { case "Opened" => "Opened" }
+    def pre = amount > 0.0
+    def app = obj.copy(balance = obj.balance + amount)
+    def eff = ()
+    def pst = obj.balance == old.balance + amount
+  }
+}
+```
+
+```scala
+package net.manikin.example.bank
+
+object Transfer {
+  import net.manikin.core.Core._
+  import net.manikin.message.StateObject._
+
+  case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
+  trait Msg[W <: World[W]] extends SMsg[W, Id, Transfer, Unit]
+
+  case class Id(id: Long) extends SId[Transfer] {
+    def ini = Transfer()
+  }
+
+  case class Book[W <: World[W]](from: Account.Id, to: Account.Id, amount: Double) extends Msg[W] {
+    def nst = { case "Initial" => "Booked" }
+    def pre = amount > 0.0 && from != to && state(from) == "Opened" && state(to) == "Opened"
+    def app = Transfer(from, to, amount)
+    def eff = { send(from, Account.Withdraw(amount)); send(to, Account.Deposit(amount)) }
+    def pst = obj(from).balance + obj(to).balance == old(from).balance + old(to).balance
+  }
+}
+```
+
 ```scala
 package net.manikin.example.bank
 
 object SimpleTransfer {
-  import net.manikin.core.context.EventWorld._
-  import IBAN._
-  import scala.language.implicitConversions
+  import net.manikin.world.SimpleWorld._
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new EventWorld()
+    val a1 = Account.Id("A1")
+    val a2 = Account.Id("A2")
+    val t1 = Transfer.Id(1)
 
-    val a1 = Account.Id(iban = IBAN("A1"))
-    val a2 = Account.Id(iban = IBAN("A2"))
-    val t1 = Transfer.Id(id = 1)
-    val t2 = Transfer.Id(id = 2)
+    val result = SimpleWorld().
+      send(a1, Account.Open(50)).
+      send(a2, Account.Open(80)).
+      send(t1, Transfer.Book(a1, a2, 30))
 
-    a1 ! Account.Open(initial = 80)
-    a2 ! Account.Open(initial = 120)
-    t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
-    t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
-
-    println(ctx(a1)) // VObject(3,0,StateObject(State(10),Opened))
-    println(ctx(a2)) // VObject(3,0,StateObject(State(190),Opened))
-    println(ctx(t1)) // VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),30),Booked))
-    println(ctx(t2)) // VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),40),Booked))
-  }
-}
-```
-```scala
-object Account {
-  import net.manikin.core.state.StateObject._
-  import IBAN._
-
-  case class Id  (iban: IBAN) extends StateId[State] { def initData = State() }
-  case class State(balance: Long = 0) // in cents
-
-  trait Msg extends StateMessage[Id, State, Unit]
-
-  case class Open(initial: Long) extends Msg {
-    def nst = { case "Initial" => "Opened" }
-    def pre = initial > 0
-    def apl = state.copy(balance = initial)
-    def eff = { }
-    def pst = state.balance == initial
-  }
-
-  case class ReOpen() extends Msg {
-    def nst = { case "Closed" => "Opened" }
-    def pre = true
-    def apl = state
-    def eff = { }
-    def pst = true
-  }
-
-  case class Close() extends Msg {
-    def nst = { case "Opened" => "Closed" }
-    def pre = true
-    def apl = state
-    def eff = { }
-    def pst = true
-  }
-
-  case class Withdraw(amount: Long) extends Msg {
-    def nst = { case "Opened" => "Opened" }
-    def pre = amount > 0 && state.balance >= amount
-    def apl = state.copy(balance = state.balance - amount)
-    def eff = { }
-    def pst = state.balance == old_state.balance - amount
-  }
-
-  case class Deposit(amount: Long) extends Msg {
-    def nst = { case "Opened" => "Opened" }
-    def pre = amount > 0
-    def apl = state.copy(balance = state.balance + amount)
-    def eff = { }
-    def pst = state.balance == old_state.balance + amount
-  }
-}
-```
-```scala
-object Transfer {
-  import net.manikin.core.state.StateObject._
-
-  case class Id  (id: Long) extends StateId[State] { def initData = State() }
-  case class State(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
-
-  trait Msg extends StateMessage[Id, State, Unit]
-
-  case class Book(from: Account.Id, to: Account.Id, amount: Long) extends Msg {
-    def nst = { case "Initial" => "Booked" }
-    def pre = amount > 0 && from != to
-    def apl = state.copy(from = from, to = to, amount = amount)
-    def eff = { from ! Account.Withdraw(amount) ; to ! Account.Deposit(amount) }
-    def pst = from.old_state.balance + to.old_state.balance == from.state.balance + to.state.balance
+    println(result.obj(a1).value) // SObject(Opened, Account(20.0))
+    println(result.obj(a2).value) // SObject(Opened, Account(110.0))
   }
 }
 ```
