@@ -3,7 +3,7 @@ package net.manikin.message
 object ThreadLocal {
   import net.manikin.core.Core._
 
-  private val local = new ThreadLocal[Val[_, _]]
+  private val local = new ThreadLocal[Value[_, _]]
 
   trait IMsg[W <: World[W], I <: Id[O], O, R] extends Message[W, I, O, R] {
     protected def pre2: Boolean
@@ -28,8 +28,8 @@ object ThreadLocal {
     private def set(c: V[I]) = local.set(c)
     private def get() = { val g = local.get().asInstanceOf[V[I]] ; if (g == null) sys.error("No Local") ; else g }
 
-    private def eval[X](f: => Val[W, X]) = { val s = self ; val r = f ; set(Val(r.world, s)) ; r.value }
-    private def step[X](id: V[I], f: => X) = { try { set(id) ; val r = f ; Val(world, r) }  finally set(null) }
+    private def eval[X](f: => Value[W, X]) = { val s = self ; val r = f ; set(Value(r.world, s)) ; r.value }
+    private def step[X](id: V[I], f: => X) = { try { set(id) ; val r = f ; Value(world, r) }  finally set(null) }
   }
 
   trait LMsg[W <: World[W], I <: Id[O], O, R] extends IMsg[W, I, O, R] {
