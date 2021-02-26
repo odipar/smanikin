@@ -1,26 +1,19 @@
 package net.manikin.example.bank
 
 object SimpleTransfer {
-  import net.manikin.core.context.EventWorld._
-  import IBAN._
-  import scala.language.implicitConversions
+  import net.manikin.world.SimpleWorld._
 
   def main(args: Array[String]): Unit = {
-    implicit val ctx = new EventWorld()
+    val a1 = Account.Id("A1")
+    val a2 = Account.Id("A2")
+    val t1 = Transfer.Id(1)
 
-    val a1 = Account.Id(iban = IBAN("A1"))
-    val a2 = Account.Id(iban = IBAN("A2"))
-    val t1 = Transfer.Id(id = 1)
-    val t2 = Transfer.Id(id = 2)
+    val result = SimpleWorld().
+      send(a1, Account.Open(50)).
+      send(a2, Account.Open(80)).
+      send(t1, Transfer.Book(a1, a2, 30))
 
-    a1 ! Account.Open(initial = 80)
-    a2 ! Account.Open(initial = 120)
-    t1 ! Transfer.Book(from = a1, to = a2, amount = 30)
-    t2 ! Transfer.Book(from = a1, to = a2, amount = 40)
-
-    println(ctx(a1)) // VObject(3,0,StateObject(State(10),Opened))
-    println(ctx(a2)) // VObject(3,0,StateObject(State(190),Opened))
-    println(ctx(t1)) // VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),30),Booked))
-    println(ctx(t2)) // VObject(1,0,StateObject(State(Id(IBAN(A1)),Id(IBAN(A2)),40),Booked))
+    println(result.obj(a1).value) // SObject(Opened, Account(20.0))
+    println(result.obj(a2).value) // SObject(Opened, Account(110.0))
   }
 }

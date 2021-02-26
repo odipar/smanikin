@@ -1,18 +1,21 @@
 package net.manikin.example.bank
 
 object Transfer {
-  import net.manikin.core.state.StateObject._
+  import net.manikin.core.Core._
+  import net.manikin.message.StateObject._
 
-  case class Id  (id: Long) extends StateId[State] { def initState = State() }
-  case class State(from: Account.Id = null, to: Account.Id = null, amount: Long = 0)
+  case class Transfer(from: Account.Id = null, to: Account.Id = null, amount: Double = 0.0)
+  trait Msg[W <: World[W]] extends SMsg[W, Id, Transfer, Unit]
 
-  trait Msg extends StateMessage[Id, State, Unit]
+  case class Id(id: Long) extends SId[Transfer] {
+    def ini = Transfer()
+  }
 
-  case class Book(from: Account.Id, to: Account.Id, amount: Long) extends Msg {
+  case class Book[W <: World[W]](from: Account.Id, to: Account.Id, amount: Double) extends Msg[W] {
     def nst = { case "Initial" => "Booked" }
-    def pre = amount > 0 && from != to
-    def apl = state.copy(from = from, to = to, amount = amount)
-    def eff = { from ! Account.Withdraw(amount) ; to ! Account.Deposit(amount) }
-    def pst = from.old_state.balance + to.old_state.balance == from.state.balance + to.state.balance
+    def pre = amount > 0.0 && from != to && state(from) == "Opened" && state(to) == "Opened"
+    def app = Transfer(from, to, amount)
+    def eff = { send(from, Account.Withdraw(amount)); send(to, Account.Deposit(amount)) }
+    def pst = obj(from).balance + obj(to).balance == old(from).balance + old(to).balance
   }
 }
