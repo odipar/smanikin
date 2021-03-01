@@ -1,7 +1,8 @@
 # Manikin
 
 The Scala version of [Manikin](https://github.com/odipar/jmanikin).
-            
+See also the Kotlin [version](https://github.com/odipar/kmanikin).
+
 ### Bank example
 ```scala
 package org.jmanikin.scala.example.bank
