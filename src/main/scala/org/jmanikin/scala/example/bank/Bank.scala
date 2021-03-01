@@ -37,7 +37,6 @@ object Bank {
 
   case class TransferId(id: Long) extends Id[Transfer] {def init = Transfer()}
   case class Transfer(from: AccountId = null, to: AccountId = null, amount: Double = 0.0)
-
   trait TransferMsg[W <: World[W]] extends ScalaMessage[W, TransferId, Transfer, Unit]
 
   case class Book[W <: World[W]](from: AccountId, to: AccountId, amount: Double) extends TransferMsg[W] {
