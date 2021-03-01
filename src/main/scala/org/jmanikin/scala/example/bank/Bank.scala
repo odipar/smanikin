@@ -2,6 +2,7 @@ package org.jmanikin.scala.example.bank
 
 // The Bank example with less boilerplate
 object Bank {
+
   import org.jmanikin.core._
   import org.jmanikin.scala.message.ScalaMessage._
   import org.jmanikin.world._
@@ -13,25 +14,25 @@ object Bank {
   case class Open[W <: World[W]](initial: Double) extends AccountMsg[W] {
     def scala =
       pre {initial > 0.0}.
-        app {obj.copy(balance = initial)}.
-        eff {}.
-        pst {obj.balance == initial}
+      app {obj.copy(balance = initial)}.
+      eff {}.
+      pst {obj.balance == initial}
   }
 
   case class Deposit[W <: World[W]](amount: Double) extends AccountMsg[W] {
     def scala =
       pre {amount > 0.0}.
-        app {obj.copy(balance = obj.balance + amount)}.
-        eff {}.
-        pst {obj.balance == old.balance + amount}
+      app {obj.copy(balance = obj.balance + amount)}.
+      eff {}.
+      pst {obj.balance == old.balance + amount}
   }
 
   case class Withdraw[W <: World[W]](amount: Double) extends AccountMsg[W] {
     def scala =
       pre {amount > 0.0}.
-        app {obj.copy(balance = obj.balance - amount)}.
-        eff {}.
-        pst {obj.balance == old.balance - amount}
+      app {obj.copy(balance = obj.balance - amount)}.
+      eff {}.
+      pst {obj.balance == old.balance - amount}
   }
 
   case class TransferId(id: Long) extends Id[Transfer] {def init = Transfer()}
@@ -42,9 +43,9 @@ object Bank {
   case class Book[W <: World[W]](from: AccountId, to: AccountId, amount: Double) extends TransferMsg[W] {
     def scala =
       pre {amount > 0.0 && from != to}.
-        app {Transfer(from, to, amount)}.
-        eff {send(from, Withdraw(amount)); send(to, Deposit(amount))}.
-        pst {obj(from).balance + obj(to).balance == old(from).balance + old(to).balance}
+      app {Transfer(from, to, amount)}.
+      eff {send(from, Withdraw(amount)); send(to, Deposit(amount))}.
+      pst {obj(from).balance + obj(to).balance == old(from).balance + old(to).balance}
   }
 
   def main(args: Array[String]): Unit = {
