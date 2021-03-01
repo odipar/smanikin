@@ -1,4 +1,4 @@
-name := "manikin"
+name := "smanikin"
 
 version := "0.1"
 
