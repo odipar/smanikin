@@ -1,9 +1,13 @@
-name := "smanikin"
+organization := "org.jmanikin"
+name := "jmanikin-scala"
 
-version := "0.1"
+version := "0.2"
 
 scalaVersion := "2.13.3"
 
+resolvers += Resolver.mavenLocal
+
+libraryDependencies += "org.jmanikin" % "jmanikin-core" % "0.2"
 libraryDependencies += "com.twitter" %% "chill" % "0.9.5"
 libraryDependencies += "com.typesafe.slick" %% "slick" % "3.3.2"
 libraryDependencies += "com.typesafe.slick" %% "slick-codegen" % "3.3.2"
