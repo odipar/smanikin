@@ -2,7 +2,6 @@ package org.jmanikin.scala.example.bank
 
 // The Bank example with less boilerplate
 object Bank {
-
   import org.jmanikin.core._
   import org.jmanikin.scala.message.ScalaMessage._
   import org.jmanikin.world._
