@@ -1,5 +1,7 @@
 package org.jmanikin.scala.example.bank
 
+import org.jmanikin.scala.world.EventWorld.EventWorld
+
 // The Bank example with less boilerplate
 object Bank {
   import org.jmanikin.core._
@@ -51,11 +53,12 @@ object Bank {
     val a2 = AccountId("A2")
     val t1 = TransferId(1)
 
-    val r = new SimpleWorld().
+    val r = new EventWorld().
       send(a1, Open(50)).
       send(a2, Open(80)).
       send(t1, Book(a1, a2, 30))
 
+    println("r: " + r.world.actions)
     println("a1: " + r.obj(a1).value) // a1: Account(20.0)
     println("a2: " + r.obj(a2).value) // a2: Account(110.0)
   }
