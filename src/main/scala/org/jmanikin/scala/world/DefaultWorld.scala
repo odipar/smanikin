@@ -4,8 +4,8 @@ object DefaultWorld {
   import org.jmanikin.core._
   import java.util.function.Supplier
 
-  trait DefaultBuilder[W <: World[W], I <: Id[O], O, E] extends Environment[W, I, O, E] with PreCondition[W, I, O, E]
-    with Apply[W, I, O, E] with Effect[W, I, O, E] with PostCondition[W, I, O, E] with Msg[W, I, O, E] {
+  trait DefaultBuilder[I <: Id[O], O, E] extends Environment[I, O, E] with PreCondition[I, O, E]
+    with Apply[I, O, E] with Effect[I, O, E] with PostCondition[I, O, E] with Msg[I, O, E] {
 
     type B = java.lang.Boolean
 
@@ -28,7 +28,7 @@ object DefaultWorld {
   case class SValue[W <: World[W], V](world: W, value: V) extends Value[W, V] {
     def obj[O](id: Id[_ <: O]) = world.obj(id)
     def old[O](id: Id[_ <: O]) = world.old(id)
-    def send[I <: Id[O], O, E](id: I, msg: Message[W, I, O, E]) = world.send(id, msg)
+    def send[I <: Id[O], O, E](id: I, msg: Message[I, O, E]) = world.send(id, msg)
     def init() = world.init()
   }
 }

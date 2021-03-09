@@ -1,18 +1,17 @@
 package org.jmanikin.scala.example.bank
 
-import org.jmanikin.scala.world.EventWorld.EventWorld
-
 // The Bank example with less boilerplate
 object Bank {
+
   import org.jmanikin.core._
   import org.jmanikin.scala.message.ScalaMessage._
-  import org.jmanikin.world._
+  import org.jmanikin.scala.world.EventWorld.EventWorld
 
-  case class AccountId(iban: String) extends Id[Account] {def init = Account()}
+  case class AccountId(iban: String) extends Id[Account] { def init = Account() }
   case class Account(balance: Double = 0.0)
-  trait AccountMsg[W <: World[W]] extends ScalaMessage[W, AccountId, Account, Unit]
+  trait AccountMsg extends ScalaMessage[AccountId, Account, Unit]
 
-  case class Open[W <: World[W]](initial: Double) extends AccountMsg[W] {
+  case class Open(initial: Double) extends AccountMsg {
     def scala =
       pre { initial > 0.0 }.
       app { obj.copy(balance = initial) }.
@@ -20,7 +19,7 @@ object Bank {
       pst { obj.balance == initial }
   }
 
-  case class Deposit[W <: World[W]](amount: Double) extends AccountMsg[W] {
+  case class Deposit(amount: Double) extends AccountMsg {
     def scala =
       pre { amount > 0.0 }.
       app { obj.copy(balance = obj.balance + amount) }.
@@ -28,19 +27,19 @@ object Bank {
       pst { obj.balance == old.balance + amount }
   }
 
-  case class Withdraw[W <: World[W]](amount: Double) extends AccountMsg[W] {
+  case class Withdraw(amount: Double) extends AccountMsg {
     def scala =
-      pre { amount > 0.0 }.
+      pre { amount > 0.0 && obj.balance > amount }.
       app { obj.copy(balance = obj.balance - amount) }.
       eff { }.
       pst { obj.balance == old.balance - amount }
   }
 
-  case class TransferId(id: Long) extends Id[Transfer] {def init = Transfer()}
+  case class TransferId(id: Long) extends Id[Transfer] { def init = Transfer() }
   case class Transfer(from: AccountId = null, to: AccountId = null, amount: Double = 0.0)
-  trait TransferMsg[W <: World[W]] extends ScalaMessage[W, TransferId, Transfer, Unit]
+  trait TransferMsg extends ScalaMessage[TransferId, Transfer, Unit]
 
-  case class Book[W <: World[W]](from: AccountId, to: AccountId, amount: Double) extends TransferMsg[W] {
+  case class Book(from: AccountId, to: AccountId, amount: Double) extends TransferMsg {
     def scala =
       pre { amount > 0.0 && from != to }.
       app { Transfer(from, to, amount) }.
@@ -53,13 +52,13 @@ object Bank {
     val a2 = AccountId("A2")
     val t1 = TransferId(1)
 
-    val r = new EventWorld().
+    val result = EventWorld().
       send(a1, Open(50)).
       send(a2, Open(80)).
       send(t1, Book(a1, a2, 30))
 
-    println("r: " + r.world.actions)
-    println("a1: " + r.obj(a1).value) // a1: Account(20.0)
-    println("a2: " + r.obj(a2).value) // a2: Account(110.0)
+    println(result.world().events.toList.reverse.map(_.prettyPrint).mkString(""))
+    println(result.obj(a1).value().balance) // 20.0
+    println(result.obj(a2).value().balance) // 110.0
   }
 }
