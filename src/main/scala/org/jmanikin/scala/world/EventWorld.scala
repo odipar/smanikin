@@ -1,6 +1,6 @@
 package org.jmanikin.scala.world
 
-import data.RAList.RAList
+import org.jmanikin.scala.data.RAList.RAList
 
 object EventWorld {
   import org.jmanikin.core._
@@ -12,7 +12,6 @@ object EventWorld {
   private class WEnv(var world: W)
 
   case class VObj[O](obj: O, version: Long)
-  case class VId[I <: Id[O], O](id: I, version: Long)
 
   type STATE = Map[Id[_], VObj[_]]
 
@@ -67,6 +66,45 @@ object EventWorld {
       }
     }
 
+    def merge(other: EventWorld): EventWorld = {
+      val commonPostfix = events.commonPostfix(other.events)
+
+      val tDivergent = events.prefixList(events.size - commonPostfix)
+      val oDivergent = other.events.prefixList(other.events.size - commonPostfix)
+
+      val thisReads = minVIds(tDivergent.flatMap(_.minReads))
+      val thisWrites = minVIds(tDivergent.flatMap(_.minSends))
+
+      val otherReads = minVIds(oDivergent.flatMap(_.minReads))
+      val otherWrites = minVIds(oDivergent.flatMap(_.minSends))
+
+      println("thisReads: " + thisReads)
+      println("thisWrites: " + thisWrites)
+
+      println("otherReads: " + otherReads)
+      println("otherWrites: " + otherWrites)
+
+      val r_s = intersect(thisReads, otherWrites)
+      if (r_s.nonEmpty) sys.error("CANNOT MERGE: READ/WRITE INTERSECTION " + r_s)
+
+      val o_t = intersect(thisWrites, otherReads)
+      if (o_t.nonEmpty) sys.error("CANNOT MERGE: WRITE/READ INTERSECTION " + o_t)
+
+      val s_s = intersect(thisWrites, otherWrites)
+      if (s_s.nonEmpty) sys.error("CANNOT MERGE: WRITE/WRITE INTERSECTION " + s_s)
+
+      val other_state = other.state
+      var new_state = state
+      var new_events = events
+
+      oDivergent.reverse.foreach(evt => new_events = evt +: new_events) // append events
+      otherWrites.map(_.id).foreach(id => new_state = new_state + (id -> other_state(id))) // copy state
+
+      EventWorld(this, new_state, new_events)
+    }
+
+    def intersect(s1: Set[VId[_]], s2: Set[VId[_]]): Set[Id[_]] = s1.map(_.id) intersect s2.map(_.id)
+
     def mustBeReads(a: RAList[Event], stage: String): List[Read[_]] = {
       val act = a.toList
       if (act.exists(!_.isInstanceOf[Read[_]])) throw new RuntimeException(stage + " may only read")
@@ -86,13 +124,25 @@ object EventWorld {
     }
   }
 
+  case class VId[O](id: Id[O], version: Long)
+
   trait Event {
     def prettyPrint: String
+    def minReads: Set[VId[_]]
+    def minSends: Set[VId[_]]
   }
+
   case class Read[O](id: Id[_ <: O], version: Long) extends Event {
     def prettyPrint = "READ " + id + ":" + version
+    def minReads = Set(VId(id, version))
+    def minSends = Set()
   }
-  case class Send[I <: Id[O], O, E](
+
+  object Read { def apply[O](vid: VId[O]): Read[O] = Read(vid.id, vid.version) }
+
+  def minVIds(seq: List[VId[_]]): Set[VId[_]] = seq.groupBy(_.id).map(_._2.minBy(_.version)).toSet
+
+  case class Send[I <: Id[O], O, E] (
      id: I,
      version: Long,
      message: Message[I, O, E],
@@ -101,6 +151,11 @@ object EventWorld {
      pstActions: List[Read[_]],
      effResult: E)
     extends Event {
+      def minReads = {
+        minVIds((preActions ++ effActions.flatMap(_.minReads).map(x => Read(x.id, x.version)) ++ pstActions).
+          map(x => VId(x.id, x.version)))
+      }
+      def minSends = minVIds(VId(id, version) +: effActions.flatMap(_.minSends))
       def prettyPrint = {
           "SEND " + message + " => " + id + ":" + version + "\n" +
           "  PRE:\n" + preActions.reverse.map(_.prettyPrint).mkString("\n").indent(4) +

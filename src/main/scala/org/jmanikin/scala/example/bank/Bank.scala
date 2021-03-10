@@ -52,13 +52,19 @@ object Bank {
     val a2 = AccountId("A2")
     val t1 = TransferId(1)
 
-    val result = EventWorld().
-      send(a1, Open(50)).
-      send(a2, Open(80)).
-      send(t1, Book(a1, a2, 30))
+    val w1 = EventWorld().
+      send(a1, Open(50)).world
 
-    println(result.world().events.toList.reverse.map(_.prettyPrint).mkString(""))
-    println(result.obj(a1).value().balance) // 20.0
-    println(result.obj(a2).value().balance) // 110.0
+    val w2 = EventWorld().
+      send(a2, Open(80)).world
+
+    val w3 = w1 merge w2
+
+    val w4 = w3.
+      send(t1, Book(a1, a2, 30)).
+      world
+
+    println(w4.obj(a1).value.balance) // 20.0
+    println(w4.obj(a2).value.balance) // 110.
   }
 }

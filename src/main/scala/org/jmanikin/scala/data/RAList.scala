@@ -1,7 +1,7 @@
-package data
+package org.jmanikin.scala.data
 
 /**
- * Purely functional Random Access (RA) List.
+ * Purely functional Random Access (RA)List.
  *
  * An RAList is very easy to implement and understand.
  *
@@ -14,33 +14,41 @@ object RAList {
   import scala.util.hashing.MurmurHash3._
 
   trait RATree[A] {
-    def hash: Int
     def first: A
     def second: RATree[A]
     def third: RATree[A]
     def toList: List[A]
+    def iterator: Iterator[A]
+    def reverseIterator: Iterator[A]
+    def hash: Int
     override def hashCode = hash
   }
 
   case class RAEmptyTree[A]() extends RATree[A] {
-    def hash = 0
     def first = err
     def second = err
     def third = err
     def toList = List()
+    def iterator: Iterator[A] = Iterator.empty
+    def reverseIterator: Iterator[A] = Iterator.empty
     def err = sys.error("EMPTY TREE")
+    def hash = 0
   }
 
   case class RALeafTree[A](first: A) extends RATree[A] {
-    def hash = mix(first.hashCode, -first.hashCode)
     def second = RAEmptyTree()
     def third = RAEmptyTree()
+    def iterator: Iterator[A] = Iterator(first)
+    def reverseIterator: Iterator[A] = Iterator(first)
     def toList = List(first)
+    def hash = mix(first.hashCode, -first.hashCode)
   }
 
   case class RABinTree[A](first: A, second: RATree[A], third: RATree[A]) extends RATree[A] {
-    val hash = mix(third.hash, mix(second.hash, first.hashCode()))
     def toList = first +: (second.toList ++ third.toList)
+    def iterator: Iterator[A] = Iterator(first) ++ second.iterator ++ third.iterator
+    def reverseIterator: Iterator[A] = third.reverseIterator ++ second.reverseIterator ++ Iterator(first)
+    val hash = mix(third.hash, mix(second.hash, first.hashCode()))
   }
 
   case class RANode[A](size: Long, tree: RATree[A])
@@ -55,45 +63,68 @@ object RAList {
     def depth: Int
     def size: Long
     def isEmpty: Boolean
-    def toList: List[A] = reverse(this).reverse.map(_.tree.toList).fold(List[A]())(_ ++ _)
+    def toList: List[A] = iterator.toList
+    def iterator = reverse(this).reverse.map(_.tree.iterator).fold(Iterator.empty[A])(_ ++ _)
+    def reverseIterator = reverse(this).map(_.tree.reverseIterator).fold(Iterator.empty[A])(_ ++ _)
     def +:(a: A): RAList[A] = {
       if(isEmpty || tail.isEmpty) RACons(RANode(1, RALeafTree(a)), this)
       else {
         val n1 = head
         val n2 = tail.head
 
+        assert(n1.size <= n2.size)
+
         if (n1.size != n2.size) RACons(RANode(1, RALeafTree[A](a)), this)
-        else RACons(RANode(1 + n1.size + n2.size, RABinTree(a, n1.tree, n2.tree)), tail.tail)
+        else RACons(RANode(1 + n1.size * 2, RABinTree(a, n1.tree, n2.tree)), tail.tail)
       }
     }
 
     private def reverse(l: RAList[A]): List[RANode[A]] = {
-      var result = List[RANode[A]]()
-      var self = l
+      var result = List[RANode[A]]() ; var self = l
       while (!self.isEmpty) { result = self.head +: result ; self = self.tail }
       result
     }
 
     private def reverse(l: List[RANode[A]]): RAList[A]  = {
-      var result = RAList[A]()
-      var self = l
+      var result = RAList[A]() ; var self = l
       while (self.nonEmpty) { result = RACons(self.head, result) ; self = self.tail }
       result
     }
-    
-    def postfix(p: Long): RAList[A] = {
+
+    def prefixList(p: Long): List[A] = prefix(p).toList
+    def prefixIterator(p: Long): Iterator[A] = prefix(p).iterator
+    def prefixReverseIterator(p: Long): Iterator[A] = prefix(p).reverseIterator
+
+    /* Note that prefix returns a RAList with broken invariants, but we hide this! */
+    private def prefix(p: Long): RAList[A] = {
       if (isEmpty || p >= size) this
       else {
-        var pst = List[RANode[A]]()
-        var rvs = reverse(this)
-        var pp = p
-
-        while (pp >= rvs.head.size) { pst = rvs.head +: pst ; pp = pp - rvs.head.size ; rvs = rvs.tail }
-        
-        reverse(pst.reverse ++ postfix(pp, rvs.head))
+        var pre = List[RANode[A]](); var ths = reverse(this).reverse; var pp = p
+        while (pp >= ths.head.size) { pre = ths.head +: pre; pp = pp - ths.head.size; ths = ths.tail }
+        reverse((pre.reverse ++ prefix(pp, ths.head)).reverse)
       }
     }
 
+    private def prefix(p: Long, node: RANode[A]): List[RANode[A]] = prefix(p, node.size, node.tree)
+    private def prefix(p: Long, size: Long, tree: RATree[A]): List[RANode[A]] = {
+      if (p == 0) List()
+      else if (p >= size) List(RANode(size, tree))
+      else if (p == 1) List(RANode(1, RALeafTree(tree.first)))
+      else {
+        val half = size / 2
+        if (p <= half) RANode(1, RALeafTree(tree.first)) +: prefix(p - 1, half, tree.second)
+        else RANode(1, RALeafTree(tree.first)) +: (RANode(half, tree.second) +: prefix(p - half - 1, half, tree.third))
+      }
+    }
+
+    def postfix(p: Long): RAList[A] = {
+      if (isEmpty || p >= size) this
+      else {
+        var pst = List[RANode[A]](); var rvs = reverse(this); var pp = p
+        while (pp >= rvs.head.size) {pst = rvs.head +: pst; pp = pp - rvs.head.size; rvs = rvs.tail}
+        reverse(pst.reverse ++ postfix(pp, rvs.head))
+      }
+    }
     private def postfix(p: Long, node: RANode[A]): List[RANode[A]] = postfix(p, node.size, node.tree)
     private def postfix(p: Long, size: Long, tree: RATree[A]): List[RANode[A]] = {
       if (p == 0) List()
@@ -131,7 +162,7 @@ object RAList {
       if (r1.isEmpty) s
       else {
         assert(r1.head.size == r2.head.size)
-        commonPostfix(r1.head.tree, r2.head.tree, r1.head.size) + s
+        s + commonPostfix(r1.head.tree, r2.head.tree, r1.head.size)
       }
     }
 
@@ -142,10 +173,10 @@ object RAList {
         else 0
       }
       else {
-        val halve = size / 2
+        val half = size / 2
 
-        if (l1.third != l2.third) commonPostfix(l1.third, l2.third, halve)
-        else if (l1.second != l2.second) halve + commonPostfix(l1.second, l2.second, halve)
+        if (l1.third != l2.third) commonPostfix(l1.third, l2.third, half)
+        else if (l1.second != l2.second) half + commonPostfix(l1.second, l2.second, half)
         else if (l1.first != l2.first) size - 1
         else size
       }
@@ -168,7 +199,7 @@ object RAList {
   }
 
   def main(arg: Array[String]): Unit = {
-    val x = 40
+    val x = 100
     var l = RAList[Int]()
 
     for (i <- 0 until x) l = i +: l
@@ -179,9 +210,9 @@ object RAList {
       r = r.tail
     }
 
-    val r1 = 999 +: 1000 +: 1001 +: 2 +: 1 +: 0 +: RAEmpty[Int]()
-    val r2 = 1000 +: 1001 +: l
-    val pst = r1.commonPostfix(r2)
-    println("pst: " + l.toList)
+    val i = l.iterator
+    while (i.hasNext) {
+      println("i.next: " + i.next)
+    }
   }
 }
