@@ -51,20 +51,23 @@ object Bank {
     val a1 = AccountId("A1")
     val a2 = AccountId("A2")
     val t1 = TransferId(1)
-
+    
     val w1 = EventWorld().
       send(a1, Open(50)).world
 
     val w2 = EventWorld().
       send(a2, Open(80)).world
 
-    val w3 = w1 merge w2
+    val w3 = w2 rebase w1
 
     val w4 = w3.
       send(t1, Book(a1, a2, 30)).
       world
 
+    println(w4.events.reverseIterator.map(_.prettyPrint).mkString("\n"))
     println(w4.obj(a1).value.balance) // 20.0
-    println(w4.obj(a2).value.balance) // 110.
+    println(w4.obj(a2).value.balance) // 110.0
+    println(w4.read(t1)) // 110.0
+
   }
 }
