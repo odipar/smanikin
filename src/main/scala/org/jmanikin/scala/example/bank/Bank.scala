@@ -5,7 +5,7 @@ object Bank {
 
   import org.jmanikin.core._
   import org.jmanikin.scala.message.ScalaMessage._
-  import org.jmanikin.scala.world.EventWorld.EventWorld
+  import org.jmanikin.scala.world.EventWorld._
 
   case class AccountId(iban: String) extends Id[Account] { def init = Account() }
   case class Account(balance: Double = 0.0)
@@ -29,7 +29,7 @@ object Bank {
 
   case class Withdraw(amount: Double) extends AccountMsg {
     def scala =
-      pre { amount > 0.0 && obj.balance > amount }.
+      pre { amount > 0.0 && obj.balance >= amount }.
       app { obj.copy(balance = obj.balance - amount) }.
       eff { }.
       pst { obj.balance == old.balance - amount }
@@ -51,23 +51,34 @@ object Bank {
     val a1 = AccountId("A1")
     val a2 = AccountId("A2")
     val t1 = TransferId(1)
-    
-    val w1 = EventWorld().
-      send(a1, Open(50)).world
+    val t2 = TransferId(2)
 
-    val w2 = EventWorld().
-      send(a2, Open(80)).world
+    try {
+      val w1 = EventWorld().
+        send(a1, Open(50)).world
 
-    val w3 = w2 rebase w1
+      val w2 = EventWorld().
+        send(a2, Open(80)).world
 
-    val w4 = w3.
-      send(t1, Book(a1, a2, 30)).
-      world
+      val w3 = w2 merge w1
 
-    println(w4.events.reverseIterator.map(_.prettyPrint).mkString("\n"))
-    println(w4.obj(a1).value.balance) // 20.0
-    println(w4.obj(a2).value.balance) // 110.0
-    println(w4.read(t1)) // 110.0
+      val w4 = w3.
+        send(t1, Book(a1, a2, 30)).
+        world
 
+      val w5 = w3.
+        send(t2, Book(a1, a2, 20)).
+        world
+
+      val w6 = w5 rebase w4
+
+      println(w6.events.reverseIterator.map(_.prettyPrint).mkString("\n"))
+      println(w6.obj(a1).value.balance) // 20.0
+      println(w6.obj(a2).value.balance) // 110.0
+      //println(w4.read(t1)) // 110.0      */
+    }
+    catch {
+      case e: WorldErr => println(e)
+    }
   }
 }

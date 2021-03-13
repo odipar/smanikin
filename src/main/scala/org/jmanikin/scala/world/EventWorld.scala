@@ -5,32 +5,33 @@ object EventWorld {
   import org.jmanikin.scala.world.DefaultWorld._
   import org.jmanikin.test.WorldConformanceTest
   import org.jmanikin.scala.data.RAList._
+  import org.jmanikin.scala.event.WorldEvent._
   import scala.util.hashing.MurmurHash3._
 
   type W = EventWorld
 
   private class WEnv(var world: W)
 
-  case class VObj[O](obj: O, version: Long, hash: Int)
+  case class VersionedObj[O](obj: O, version: Long, hash: Int)
 
-  type STATE = Map[Id[_], VObj[_]]
+  type STATE = Map[Id[_], VersionedObj[_]]
 
   val conforms = WorldConformanceTest.check(EventWorld())
-  
-  case class EventWorld(previous: EventWorld = null, state: STATE = Map(), events: RAList[Event] = RAList())
+
+  case class EventWorld(previous: EventWorld = null, state: STATE = Map(), events: RAList[WEvent] = RAList())
     extends World[EventWorld] {
 
-    def read[O](id: Id[_ <: O]): VObj[O] = {
+    def read[O](id: Id[_ <: O]): VersionedObj[O] = {
       val obj = id.init
-      state.getOrElse(id, VObj(obj, 0, obj.hashCode)).asInstanceOf[VObj[O]]
+      state.getOrElse(id, VersionedObj(obj, 0, obj.hashCode)).asInstanceOf[VersionedObj[O]]
     }
     def obj[O](id: Id[_ <: O]) = {
       val r = read(id)
-      SValue(this.copy(events = Read(id, r.version, r.hash) +: events), r.obj)
+      SValue(this.copy(events = WRead(id, r.version, r.hash) +: events), r.obj)
     }
     def old[O](id: Id[_ <: O]): Value[W, O] = {
       val r = previous.read(id)
-      SValue(this.copy(events = Read(id, r.version, r.hash) +: events), r.obj)
+      SValue(this.copy(events = WRead(id, r.version, r.hash) +: events), r.obj)
     }
     def send[I <: Id[O], O, E](id: I, message: Message[I, O, E]) = sendEnv(id, message, new WEnv(this))
     def err[E](err: String): Value[EventWorld, E] = throw new RuntimeException(err)
@@ -42,17 +43,19 @@ object EventWorld {
 
       env.world = EventWorld(previous, state, events = RAList())
 
-      if (!msg.pre.get) err[E]("Pre failed")
+      if (!msg.pre.get) preErr(id, vObj, message)
       else {
-        val preActions = mustBeReads(env.world.events, "Pre")
+        val preActions = checkReads(env.world.events, id, vObj, message, "Pre")
 
         env.world = EventWorld(this, state, RAList())
         val app = msg.app.get
 
-        if (mustBeReads(env.world.events, "Apply").exists(_.id != id)) err[E]("Apply may only read itself")
+        if (checkReads(env.world.events, id, vObj, message, "Apply").exists(_.id != id)) {
+          appErr[I, O, E](id, vObj, message)
+        }
 
         val h1 = mix(mix(vObjHash, msg.hashCode), app.hashCode) // intermediate hash
-        val vObj1 = VObj(app, vObj.version + 1, h1)
+        val vObj1 = VersionedObj(app, vObj.version + 1, h1)
         env.world = EventWorld(this, state + (id -> vObj1), RAList())
 
         val eff = msg.eff.get
@@ -60,13 +63,13 @@ object EventWorld {
 
         env.world = EventWorld(this, env.world.state, RAList())
 
-        if (!msg.pst.get) err[E]("Post failed")
+        if (!msg.pst.get) pstErr[I, O, E](id, vObj, message)
         else {
-          val pstActions = mustBeReads(env.world.events, "Post")
-          val send = Send(id, vObj.version, vObjHash, message, preActions, effActions, pstActions, eff)
+          val pstActions = checkReads(env.world.events, id, vObj, message, "Post")
+          val send = WSend(id, vObj.version, vObjHash, message, preActions, effActions, pstActions, eff)
 
           val h2 = mix(h1, send.hashCode) // final hash (mix with send)
-          val vObj2 = VObj(app, vObj.version + 1, h2)
+          val vObj2 = VersionedObj(app, vObj.version + 1, h2)
           val next = EventWorld(this, env.world.state + (id -> vObj2), send +: events)
 
           SValue(next, eff)
@@ -75,10 +78,8 @@ object EventWorld {
     }
 
     def rebase(other: EventWorld): EventWorld = {
-      val commonPostfix = events.commonPostfix(other.events)
-      val tDivergent = events.prefixList(events.size - commonPostfix)
       var nWorld = other
-      tDivergent.foreach(e => nWorld = e(nWorld))
+      events.prefixList(events.size - events.commonPostfix(other.events)).foreach(e => nWorld = e(nWorld))
       nWorld
     }
 
@@ -90,18 +91,12 @@ object EventWorld {
 
       val tReads = minVIds(tDivergent.flatMap(_.minReads))
       val tWrites = minVIds(tDivergent.flatMap(_.minSends))
-
       val oReads = minVIds(oDivergent.flatMap(_.minReads))
       val oWrites = minVIds(oDivergent.flatMap(_.minSends))
 
-      val r_s = intersect(tReads, oWrites)
-      if (r_s.nonEmpty) sys.error("CANNOT MERGE: READ/WRITE INTERSECTION " + r_s)
-
-      val o_t = intersect(tWrites, oReads)
-      if (o_t.nonEmpty) sys.error("CANNOT MERGE: WRITE/READ INTERSECTION " + o_t)
-
-      val s_s = intersect(tWrites, oWrites)
-      if (s_s.nonEmpty) sys.error("CANNOT MERGE: WRITE/WRITE INTERSECTION " + s_s)
+      checkIntersection("WRITE/WRITE", tWrites, oWrites)
+      checkIntersection("READ/WRITE", tReads, oWrites)
+      checkIntersection("WRITE/READ", tWrites, oReads)
 
       val oState = other.state
       var nState = state
@@ -114,16 +109,24 @@ object EventWorld {
 
       oDivergent.reverse.foreach(evt => nEvents = evt +: nEvents) // append events
       oWrites.map(_.id).foreach(id => nState = nState + (id -> oState(id))) // copy state
-      
+
       EventWorld(this, nState, nEvents)
     }
 
-    def intersect(s1: Set[VId[_]], s2: Set[VId[_]]): Set[Id[_]] = s1.map(_.id) intersect s2.map(_.id)
+    def checkIntersection(err: String, s1: Set[VersionedId[_]], s2: Set[VersionedId[_]]): Unit = {
+      val r = s1.map(_.id) intersect s2.map(_.id)
+      if (r.nonEmpty) sys.error("CANNOT MERGE: " + err + " INTERSECTION " + r)
+    }
 
-    def mustBeReads(e: RAList[Event], stage: String): List[Read[_]] = {
-      val evt = e.toList
-      if (evt.exists(!_.isInstanceOf[Read[_]])) throw new RuntimeException(stage + " may only read")
-      else evt.map(_.asInstanceOf[Read[_]])
+    def preErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) = throw PreErr(id, vObj, msg)
+    def appErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) = throw AppErr(id, vObj, msg)
+    def pstErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) = throw PstErr(id, vObj, msg)
+
+    def checkReads[I <: Id[O], O, E]
+      (e: RAList[WEvent], id: I, vObj: VersionedObj[O], msg: Message[I, O, E], stage: String): List[WRead[_]] = {
+        val evt = e.toList
+        if (evt.exists(!_.isInstanceOf[WRead[_]])) throw ReadErr(id, vObj, msg)
+        else evt.map(_.asInstanceOf[WRead[_]])
     }
 
     def init() = EventWorld()
@@ -139,47 +142,17 @@ object EventWorld {
     }
   }
 
-  case class VId[O](id: Id[O], version: Long, hash: Int)
-
-  trait Event {
-    def prettyPrint: String
-    def minReads: Set[VId[_]]
-    def minSends: Set[VId[_]]
-    def apply(w: EventWorld): EventWorld
+  trait WorldErr extends Exception
+  
+  trait MsgErr[I <: Id[O], O, E] extends WorldErr {
+    def id: I
+    def vObj: VersionedObj[O]
+    def msg: Message[I, O, E]
+    override def toString: String = getClass.getSimpleName + "(" + id + "," + vObj + "," + msg + ")"
   }
 
-  case class Read[O](id: Id[_ <: O], version: Long, hash: Int) extends Event {
-    def minReads = Set(VId(id, version, hash))
-    def minSends = Set()
-    def prettyPrint = "READ " + id + ":" + version
-    def apply(w: EventWorld): EventWorld = w.obj(id).world
-  }
-
-  object Read { def apply[O](vid: VId[O]): Read[O] = Read(vid.id, vid.version, vid.hash) }
-
-  def minVIds(seq: List[VId[_]]): Set[VId[_]] = seq.groupBy(_.id).map(_._2.minBy(_.version)).toSet
-
-  case class Send[I <: Id[O], O, E] (
-     id: I,
-     version: Long,
-     hash: Int,
-     message: Message[I, O, E],
-     preActions: List[Read[_]],
-     effActions: List[Event],
-     pstActions: List[Read[_]],
-     effResult: E)
-    extends Event {
-      def minReads = {
-        minVIds((preActions ++ effActions.flatMap(_.minReads).map(x => Read(x.id, x.version, x.hash)) ++ pstActions).
-          map(x => VId(x.id, x.version, x.hash)))
-      }
-      def minSends = minVIds(VId(id, version, hash) +: effActions.flatMap(_.minSends))
-      def prettyPrint = {
-          "SEND " + message + " => " + id + ":" + version + "\n" +
-          "  PRE:\n" + preActions.reverse.map(_.prettyPrint).mkString("\n").indent(4) +
-          "  EFF: "  + effResult + "\n" + effActions.reverse.map(_.prettyPrint).mkString("").indent(4) +
-          "  PST:\n" + pstActions.reverse.map(_.prettyPrint).mkString("\n").indent(4)
-      }
-      def apply(w: EventWorld): EventWorld = w.send(id, message).world
-  }
+  case class ReadErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) extends MsgErr[I, O, E]
+  case class PreErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) extends MsgErr[I, O, E]
+  case class AppErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) extends MsgErr[I, O, E]
+  case class PstErr[I <: Id[O], O, E](id: I, vObj: VersionedObj[O], msg: Message[I, O, E]) extends MsgErr[I, O, E]
 }
