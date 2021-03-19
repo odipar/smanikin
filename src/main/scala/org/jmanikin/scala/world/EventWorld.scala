@@ -17,7 +17,7 @@ object EventWorld {
   type STATE = Map[Id[_], VersionedObj[_]]
 
   val conforms = WorldConformanceTest.check(EventWorld())
-
+  
   case class EventWorld(previous: EventWorld = null, state: STATE = Map(), events: RAList[WEvent] = RAList())
     extends World[EventWorld] {
 

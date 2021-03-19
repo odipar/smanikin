@@ -5,7 +5,7 @@ object ScalaMessage {
   import org.jmanikin.message._
 
   // Redefined builder stages
-  trait SPre[I <: Id[O], O, E] { def pre(pre: => Boolean): SApp[ I, O, E] }
+  trait SPre[I <: Id[O], O, E] { def pre(pre: => Boolean): SApp[I, O, E] }
   trait SApp[I <: Id[O], O, E] { def app(app: => O):       SEff[I, O, E] }
   trait SEff[I <: Id[O], O, E] { def eff(eff: => E):       SPst[I, O, E] }
   trait SPst[I <: Id[O], O, E] { def pst(pst: => Boolean): SMsg[I, O, E] }
