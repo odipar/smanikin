@@ -72,7 +72,7 @@ object Bank {
 
       val w6 = w5 rebase w4
 
-      println(w6.events.reverseIterator.map(_.prettyPrint).mkString("\n"))
+      println(w6)
       println(w6.obj(a1).value.balance) // 0.0
       println(w6.obj(a2).value.balance) // 130.0
     }

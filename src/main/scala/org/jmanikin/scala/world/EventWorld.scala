@@ -77,6 +77,8 @@ object EventWorld {
       }
     }
 
+    override def toString = events.reverseIterator.map(_.prettyPrint).mkString("\n")
+    
     def rebase(other: EventWorld): EventWorld = {
       var nWorld = other
       events.prefixList(events.size - events.commonPostfix(other.events)).foreach(e => nWorld = e(nWorld))

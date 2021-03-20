@@ -38,7 +38,7 @@ object WorldEvent {
     }
     def minSends = minVIds(VersionedId(id, version, hash) +: effActions.flatMap(_.minSends))
     def prettyPrint = {
-      "SEND " + message + " => " + id + ":" + version + "\n" +
+      "SENT " + message + " => " + id + ":" + version + "\n" +
         "  PRE:\n" + preActions.reverse.map(_.prettyPrint).mkString("\n").indent(4) +
         "  EFF: "  + effResult + "\n" + effActions.reverse.map(_.prettyPrint).mkString("").indent(4) +
         "  PST:\n" + pstActions.reverse.map(_.prettyPrint).mkString("\n").indent(4)
