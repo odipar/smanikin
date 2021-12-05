@@ -33,7 +33,9 @@ object EventWorld {
       val r = previous.read(id)
       SValue(this.copy(events = WRead(id, r.version, r.hash) +: events), r.obj)
     }
-    def send[I <: Id[O], O, E](id: I, message: Message[I, O, E]) = sendEnv(id, message, new WEnv(this))
+    def send[I <: Id[O], O, E](id: I, message: Message[I, O, E]) = {
+      sendEnv(id, message, new WEnv(this))
+    }
     def err[E](err: String): Value[EventWorld, E] = throw new RuntimeException(err)
 
     private def sendEnv[I <: Id[O], O, E](id: I, message: Message[I, O, E], env: WEnv) = {
@@ -55,8 +57,7 @@ object EventWorld {
         }
 
         val h1 = mix(mix(vObjHash, msg.hashCode), app.hashCode) // intermediate hash
-        val vObj1 = VersionedObj(app, vObj.version + 1, h1)
-        env.world = EventWorld(this, state + (id -> vObj1), RAList())
+        env.world = EventWorld(this, state + (id -> VersionedObj(app, vObj.version + 1, h1)), RAList())
 
         val eff = msg.eff.get
         val effActions = env.world.events.toList
@@ -67,10 +68,7 @@ object EventWorld {
         else {
           val pstActions = checkReads(env.world.events, id, vObj, message, "Post")
           val send = WSend(id, vObj.version, vObjHash, message, preActions, effActions, pstActions, eff)
-
-          val h2 = mix(h1, send.hashCode) // final hash (mix with send)
-          val vObj2 = VersionedObj(app, vObj.version + 1, h2)
-          val next = EventWorld(this, env.world.state + (id -> vObj2), send +: events)
+          val next = EventWorld(this, env.world.state, send +: events)
 
           SValue(next, eff)
         }
@@ -135,11 +133,16 @@ object EventWorld {
 
     private case class IEnv[I <: Id[O], O, E](env: WEnv, self: I) extends Environment[I, O, E] with
       DefaultBuilder[I, O, E] {
-
+      
       def world = env.world
       def obj[O2](id: Id[_ <: O2]) = eval(world.obj(id))
       def old[O2](id: Id[_ <: O2]) = eval(world.old(id))
-      def send[I2 <: Id[O2], O2, R2](id: I2, msg: Message[I2, O2, R2]) = eval(world.sendEnv(id, msg, env))
+      def send[I2 <: Id[O2], O2, R2](id: I2, msg: Message[I2, O2, R2]) = {
+        val snapshot = env.world
+
+        try { eval(world.sendEnv(id, msg, env)) }
+        catch { case e: Throwable => env.world = snapshot ; throw e }
+      }
       private def eval[X](f: => Value[W, X]) = { val r = f; env.world = r.world; r.value }
     }
   }
