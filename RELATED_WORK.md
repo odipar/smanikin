@@ -2,6 +2,8 @@
 
 > Manikin has no paper — this is the related-work treatment such a paper would need. Eighteen research threads, 182 works, every citation and every sharp claim adversarially verified against DBLP, publisher pages, and — where the claim demanded it — the primary PDFs.
 
+*A designed edition for comfortable reading — light and dark themes, navigation, pull-quotes — is committed alongside this file: [RELATED_WORK.html](RELATED_WORK.html) (download and open in a browser).*
+
 *Method: 14 finder agents ran one thread each; 14 verifier agents attacked every citation and claim (16 relations corrected, 0 fabrications found); a completeness critic then demanded 4 further threads and 12 further works, each web-verified before inclusion. Compiled 2026-07-14.*
 
 ## The design space at a glance
